@@ -57,6 +57,7 @@ dependencies:
   # Network & GPS
   connectivity_plus: ^6.0.5
   geolocator: ^13.0.1
+  mobile_scanner: ^7.4.0
 
 dev_dependencies:
   flutter_test:
