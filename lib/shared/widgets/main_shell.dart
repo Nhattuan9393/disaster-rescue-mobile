@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:disaster_rescue/core/theme/app_theme.dart';
 import 'package:disaster_rescue/data/models/user_role.dart';
 import 'package:disaster_rescue/features/auth/auth_provider.dart';
+import 'package:disaster_rescue/core/utils/connection_provider.dart';
+import 'package:disaster_rescue/data/datasources/local/offline_queue_provider.dart';
+import 'package:disaster_rescue/shared/widgets/offline_banner.dart';
 
 /// Khung ứng dụng chính (App Shell) chứa Bottom Navigation Bar thay đổi động theo vai trò người dùng.
 class MainShell extends ConsumerWidget {
@@ -19,6 +22,10 @@ class MainShell extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final role = authState.activeRole;
     final location = GoRouterState.of(context).matchedLocation;
+
+    final connectionStatus = ref.watch(connectionProvider);
+    final queueState = ref.watch(offlineQueueProvider);
+    final isOffline = connectionStatus == ConnectionStatus.offline;
 
     // 1. Định nghĩa các Tab tương ứng với từng vai trò
     final List<_ShellTabItem> tabs = [];
@@ -97,7 +104,16 @@ class MainShell extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: child,
+      body: Column(
+        children: [
+          if (isOffline)
+            OfflineBanner(
+              pendingSosCount: queueState.sosCount,
+              pendingActionsCount: queueState.actionCount,
+            ),
+          Expanded(child: child),
+        ],
+      ),
       bottomNavigationBar: showBottomNavBar
           ? NavigationBar(
               selectedIndex: selectedIndex,
