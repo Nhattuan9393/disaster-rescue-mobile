@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:disaster_rescue/data/models/safety_models.dart';
+import 'package:disaster_rescue/data/models/safety_status.dart';
 
 void main() {
   group('Kiểm thử Thay đổi trạng thái an toàn đa nguồn (FR-07.3 & FR-06.3)', () {
