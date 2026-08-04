@@ -36,3 +36,38 @@ class SafetyStatus with _$SafetyStatus {
 
   bool get requiresFieldCheck => status == SafetyState.missingContact;
 }
+
+extension SafetySourceExtension on SafetySource {
+  int get confidence {
+    switch (this) {
+      case SafetySource.rescueTeam:
+        return 100;
+      case SafetySource.evacuationCheckin:
+        return 95;
+      case SafetySource.selfApp:
+        return 90;
+      case SafetySource.adminManual:
+        return 70;
+      case SafetySource.neighborReport:
+        return 40;
+    }
+  }
+}
+
+class InvalidSafetyTransitionException implements Exception {
+  final String message;
+  InvalidSafetyTransitionException(this.message);
+  @override
+  String toString() => 'InvalidSafetyTransitionException: $message';
+}
+
+SafetyStatus updateSafetyStatus(SafetyStatus current, SafetyStatus update) {
+  if (update.confidence >= current.confidence) {
+    return update;
+  } else {
+    throw InvalidSafetyTransitionException(
+      'Không thể cập nhật trạng thái từ nguồn có độ tin cậy thấp hơn (${update.source.name}: ${update.confidence}) '
+      'lên nguồn có độ tin cậy cao hơn (${current.source.name}: ${current.confidence})'
+    );
+  }
+}
