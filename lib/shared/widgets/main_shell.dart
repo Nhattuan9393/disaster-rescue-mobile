@@ -34,18 +34,18 @@ class MainShell extends ConsumerWidget {
       tabs.addAll([
         const _ShellTabItem(
           icon: Icon(Icons.home_rounded),
-          label: 'SOS 1 Chạm',
+          label: 'Trang chủ',
           path: '/',
         ),
         const _ShellTabItem(
           icon: Icon(Icons.airport_shuttle_rounded),
-          label: 'Hỗ trợ Sơ tán',
+          label: 'Hỗ trợ',
           path: '/evacuation-request',
         ),
         const _ShellTabItem(
-          icon: Icon(Icons.dashboard_rounded),
-          label: 'Bảng tin công khai',
-          path: '/public-board',
+          icon: Icon(Icons.person_rounded),
+          label: 'Hồ sơ',
+          path: '/profile',
         ),
       ]);
     } else if (role == UserRole.admin) {

@@ -5,12 +5,14 @@ import 'package:disaster_rescue/data/models/user_role.dart';
 class AuthState {
   final bool isAuthenticated;
   final String? phoneNumber;
+  final String? displayName;
   final List<UserRole> availableRoles;
   final UserRole? activeRole;
 
   const AuthState({
     required this.isAuthenticated,
     this.phoneNumber,
+    this.displayName,
     this.availableRoles = const [],
     this.activeRole,
   });
@@ -18,12 +20,14 @@ class AuthState {
   AuthState copyWith({
     bool? isAuthenticated,
     String? phoneNumber,
+    String? displayName,
     List<UserRole>? availableRoles,
     UserRole? activeRole,
   }) {
     return AuthState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      displayName: displayName ?? this.displayName,
       availableRoles: availableRoles ?? this.availableRoles,
       activeRole: activeRole ?? this.activeRole,
     );
@@ -34,13 +38,14 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   AuthNotifier() : super(const AuthState(isAuthenticated: false));
 
-  /// Mô phỏng đăng nhập với SĐT và danh sách vai trò
-  void login(String phone, List<UserRole> roles) {
+  /// Đăng nhập với SĐT, danh sách vai trò, và tên hiển thị.
+  /// FR-01.5: roles.length == 1 → vào thẳng, >= 2 → chọn vai trò.
+  void login(String phone, List<UserRole> roles, {String? displayName}) {
     state = AuthState(
       isAuthenticated: true,
       phoneNumber: phone,
+      displayName: displayName,
       availableRoles: roles,
-      // Quy định nghiệp vụ FR-01.5: roles.length == 1 vào thẳng, >=2 chọn vai trò
       activeRole: roles.length == 1 ? roles.first : null,
     );
   }
@@ -49,6 +54,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void selectRole(UserRole role) {
     if (state.availableRoles.contains(role) || role == UserRole.public) {
       state = state.copyWith(activeRole: role);
+    }
+  }
+
+  /// Đổi vai trò — từ màn Hồ sơ, không cần đăng xuất (quyết định 2.6)
+  void switchRole() {
+    if (state.availableRoles.length >= 2) {
+      state = state.copyWith(activeRole: null);
     }
   }
 

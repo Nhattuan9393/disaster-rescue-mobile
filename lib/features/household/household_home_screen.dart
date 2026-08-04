@@ -149,16 +149,12 @@ class _HouseholdHomeScreenState extends ConsumerState<HouseholdHomeScreen> {
                     ListTile(
                       leading: const Icon(Icons.people_rounded, color: AppColors.primary),
                       title: const Text(
-                        'Báo tin giúp người khác (Luồng B)',
+                        'Báo tin cho xã',
                         style: TextStyle(fontWeight: FontWeight.w600, fontFamily: AppTypography.fontFamily),
                       ),
-                      subtitle: const Text('Khai báo thông tin hộ dân khác bị nạn lân cận (cần duyệt)'),
+                      subtitle: const Text('Báo giúp người khác hoặc báo tình hình khu vực'),
                       trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Demo: Mở form báo tin cứu hộ hộ dân khác.')),
-                        );
-                      },
+                      onTap: () => context.go('/report-to-commune'),
                     ),
                   ],
                 ),

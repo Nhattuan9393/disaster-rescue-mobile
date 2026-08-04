@@ -5,7 +5,31 @@ import 'package:disaster_rescue/core/theme/app_theme.dart';
 import 'package:disaster_rescue/data/models/user_role.dart';
 import 'auth_provider.dart';
 
-/// Màn hình đăng nhập giả lập hỗ trợ thử nghiệm nhanh.
+/// Dữ liệu giả lập 5 tài khoản mock (FR-01.1).
+/// SĐT 0901000001~05, mật khẩu luôn là "123456".
+class _MockUser {
+  final String phone;
+  final String name;
+  final String password;
+  final List<UserRole> roles;
+
+  const _MockUser({
+    required this.phone,
+    required this.name,
+    this.password = '123456',
+    required this.roles,
+  });
+}
+
+const _mockUsers = [
+  _MockUser(phone: '0901000001', name: 'Nguyễn Văn An', roles: [UserRole.household]),
+  _MockUser(phone: '0901000002', name: 'Trần Thị Bình', roles: [UserRole.admin]),
+  _MockUser(phone: '0901000003', name: 'Lê Văn Cường', roles: [UserRole.rescueTeam]),
+  _MockUser(phone: '0901000004', name: 'Phạm Thị Dung', roles: [UserRole.household, UserRole.admin]),
+  _MockUser(phone: '0901000005', name: 'Hoàng Văn Em', roles: [UserRole.household, UserRole.rescueTeam]),
+];
+
+/// Màn 02 — Đăng nhập bằng SĐT + mật khẩu.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -14,32 +38,58 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _phoneController = TextEditingController(text: '0987654321');
-  final List<UserRole> _selectedRoles = [UserRole.household];
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _obscurePassword = true;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
     _phoneController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  void _toggleRole(UserRole role) {
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() {
-      if (_selectedRoles.contains(role)) {
-        if (_selectedRoles.length > 1) {
-          _selectedRoles.remove(role);
-        }
-      } else {
-        _selectedRoles.add(role);
-      }
+      _isLoading = true;
+      _errorMessage = null;
     });
-  }
 
-  void _handleLogin() {
+    // Mô phỏng network delay
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    if (!mounted) return;
+
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty) return;
+    final password = _passwordController.text;
 
-    ref.read(authProvider.notifier).login(phone, _selectedRoles);
+    // Tìm mock user
+    final mockUser = _mockUsers.cast<_MockUser?>().firstWhere(
+      (u) => u!.phone == phone,
+      orElse: () => null,
+    );
+
+    if (mockUser == null || mockUser.password != password) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Thông tin đăng nhập không đúng';
+      });
+      return;
+    }
+
+    // Đăng nhập thành công
+    ref.read(authProvider.notifier).login(
+      phone,
+      mockUser.roles,
+      displayName: mockUser.name,
+    );
+
+    setState(() => _isLoading = false);
     context.go('/');
   }
 
@@ -55,137 +105,256 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Icon(
-                Icons.location_on_rounded,
-                size: 80,
-                color: AppColors.primary,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              const Text(
-                'DisasterRescue',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  fontFamily: AppTypography.fontFamily,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Logo
+                Container(
+                  width: 80,
+                  height: 80,
+                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.health_and_safety_rounded,
+                    size: 48,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              const Text(
-                'Điều phối cứu hộ khẩn cấp thiên tai',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                  fontFamily: AppTypography.fontFamily,
+                const Text(
+                  'DisasterRescue',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: AppTypography.fontFamily,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Card(
-                shape: RoundedRectangleBorder(borderRadius: AppRadius.card),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.base),
+                const Text(
+                  'Điều phối cứu hộ khẩn cấp thiên tai',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                    fontFamily: AppTypography.fontFamily,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+
+                // Card đăng nhập
+                Card(
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.card),
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.base),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'ĐĂNG NHẬP',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            fontFamily: AppTypography.fontFamily,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.base),
+
+                        // SĐT
+                        TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Số điện thoại',
+                            hintText: '0901000001',
+                            prefixIcon: Icon(Icons.phone_rounded),
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) {
+                              return 'Vui lòng nhập số điện thoại';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+
+                        // Mật khẩu
+                        TextFormField(
+                          controller: _passwordController,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Mật khẩu',
+                            hintText: '123456',
+                            prefixIcon: const Icon(Icons.lock_rounded),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscurePassword
+                                  ? Icons.visibility_off_rounded
+                                  : Icons.visibility_rounded),
+                              onPressed: () {
+                                setState(() => _obscurePassword = !_obscurePassword);
+                              },
+                            ),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Vui lòng nhập mật khẩu';
+                            }
+                            return null;
+                          },
+                        ),
+
+                        // Lỗi đăng nhập
+                        if (_errorMessage != null) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          Container(
+                            padding: const EdgeInsets.all(AppSpacing.sm),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: AppRadius.card,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: AppColors.primary, size: 18),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 13,
+                                      fontFamily: AppTypography.fontFamily,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: AppSpacing.base),
+
+                        // Nút đăng nhập
+                        ElevatedButton(
+                          onPressed: _isLoading ? null : _handleLogin,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                            shape: RoundedRectangleBorder(borderRadius: AppRadius.button),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Đăng nhập',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: AppTypography.fontFamily,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.md),
+
+                // Đăng ký hộ dân
+                OutlinedButton.icon(
+                  onPressed: () => context.go('/register-household'),
+                  icon: const Icon(Icons.person_add_rounded, color: AppColors.primary),
+                  label: const Text(
+                    'Đăng ký hộ dân',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: AppTypography.fontFamily,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    side: const BorderSide(color: AppColors.primary, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: AppRadius.button),
+                  ),
+                ),
+
+                const SizedBox(height: AppSpacing.sm),
+
+                // Xem công khai
+                TextButton.icon(
+                  onPressed: _handleEnterPublic,
+                  icon: const Icon(Icons.dashboard_rounded, color: AppColors.textSecondary),
+                  label: const Text(
+                    'Xem tình hình thiên tai',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontFamily: AppTypography.fontFamily,
+                    ),
+                  ),
+                ),
+
+                // Gợi ý tài khoản test
+                const SizedBox(height: AppSpacing.lg),
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.warningBanner,
+                    borderRadius: AppRadius.card,
+                    border: Border.all(color: AppColors.priorityYellow.withValues(alpha: 0.4)),
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'ĐĂNG NHẬP THỬ NGHIỆM',
+                        'TÀI KHOẢN THỬ NGHIỆM',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                           fontFamily: AppTypography.fontFamily,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.base),
-                      TextFormField(
-                        controller: _phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Số điện thoại',
-                          prefixIcon: Icon(Icons.phone_rounded),
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      const Text(
-                        'Chọn vai trò giả lập (có thể chọn nhiều):',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                          fontFamily: AppTypography.fontFamily,
-                        ),
-                      ),
                       const SizedBox(height: AppSpacing.xs),
-                      ...UserRole.values
-                          .where((r) => r != UserRole.public)
-                          .map((role) {
-                        final isSelected = _selectedRoles.contains(role);
-                        return CheckboxListTile(
-                          title: Text(
-                            role.label,
+                      ..._mockUsers.map((u) => Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: GestureDetector(
+                          onTap: () {
+                            _phoneController.text = u.phone;
+                            _passwordController.text = u.password;
+                          },
+                          child: Text(
+                            '${u.phone} — ${u.roles.map((r) => r.label).join(', ')}',
                             style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                              color: AppColors.infoBlue,
                               fontFamily: AppTypography.fontFamily,
+                              decoration: TextDecoration.underline,
                             ),
                           ),
-                          value: isSelected,
-                          onChanged: (_) => _toggleRole(role),
-                          controlAffinity: ListTileControlAffinity.leading,
-                          activeColor: AppColors.primary,
-                          contentPadding: EdgeInsets.zero,
-                        );
-                      }),
-                      const SizedBox(height: AppSpacing.base),
-                      ElevatedButton(
-                        onPressed: _handleLogin,
-                        style: ElevatedButtonThemeData().style?.copyWith(
-                          padding: const WidgetStatePropertyAll(
-                            EdgeInsets.symmetric(vertical: AppSpacing.md),
-                          ),
-                        ) ?? ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
                         ),
-                        child: const Text(
-                          'Đăng nhập',
-                          style: TextStyle(
-                            color: AppColors.surface,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: AppTypography.fontFamily,
-                          ),
-                        ),
-                      ),
+                      )),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.base),
-              OutlinedButton.icon(
-                onPressed: _handleEnterPublic,
-                icon: const Icon(Icons.dashboard_rounded, color: AppColors.textPrimary),
-                label: const Text(
-                  'Xem Situation Board công khai',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: AppTypography.fontFamily,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  side: const BorderSide(color: AppColors.textPrimary, width: 1.5),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
