@@ -9,7 +9,34 @@ import 'package:disaster_rescue/features/auth/role_selector_screen.dart';
 import 'package:disaster_rescue/features/household/household_home_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_map_screen.dart';
 
+import 'dart:io';
+import 'package:hive/hive.dart';
+import 'package:disaster_rescue/data/models/offline_request.dart';
+
 void main() {
+  late Directory tempDir;
+  late Box<OfflineRequest> box;
+
+  setUpAll(() {
+    try {
+      Hive.registerAdapter(OfflineRequestAdapter());
+    } catch (_) {}
+  });
+
+  setUp(() async {
+    tempDir = await Directory.systemTemp.createTemp('hive_nav_test');
+    Hive.init(tempDir.path);
+    box = await Hive.openBox<OfflineRequest>('offline_requests');
+  });
+
+  tearDown(() async {
+    await box.clear();
+    await box.close();
+    try {
+      await tempDir.delete(recursive: true);
+    } catch (_) {}
+  });
+
   group('GoRouter and Dynamic MainShell Navigation Tests', () {
     Widget createTestApp(ProviderContainer container) {
       return UncontrolledProviderScope(
