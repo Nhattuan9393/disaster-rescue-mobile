@@ -11,10 +11,16 @@ import 'package:disaster_rescue/features/auth/profile_screen.dart';
 import 'package:disaster_rescue/features/situation_board/situation_board_screen.dart';
 import 'package:disaster_rescue/features/household/household_home_screen.dart';
 import 'package:disaster_rescue/features/household/evacuation_request_screen.dart';
-import 'package:disaster_rescue/features/household/safety_confirmation_screen.dart';
 import 'package:disaster_rescue/features/notification/notification_list_screen.dart';
 import 'package:disaster_rescue/features/notification/notification_detail_screen.dart';
 import 'package:disaster_rescue/features/sos/report_to_commune_screen.dart';
+import 'package:disaster_rescue/features/sos/sos_detail_screen.dart';
+import 'package:disaster_rescue/features/household_registry/manual_entry_screen.dart';
+import 'package:disaster_rescue/features/household_registry/duplicate_resolution_screen.dart';
+import 'package:disaster_rescue/features/relief/relief_stock_detail_screen.dart';
+import 'package:disaster_rescue/features/relief/receive_stock_screen.dart';
+import 'package:disaster_rescue/features/relief/dispatch_stock_screen.dart';
+import 'package:disaster_rescue/features/relief/relief_receipt_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_map_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_households_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_warehouse_screen.dart';
@@ -124,6 +130,34 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/report-to-commune',
             builder: (context, state) => const ReportToCommuneScreen(),
+          ),
+          GoRoute(
+            path: '/sos-detail',
+            builder: (context, state) => const SosDetailScreen(),
+          ),
+          GoRoute(
+            path: '/manual-entry',
+            builder: (context, state) => const ManualEntryScreen(),
+          ),
+          GoRoute(
+            path: '/duplicate-resolution',
+            builder: (context, state) => const DuplicateResolutionScreen(),
+          ),
+          GoRoute(
+            path: '/relief-stock',
+            builder: (context, state) => const ReliefStockDetailScreen(),
+          ),
+          GoRoute(
+            path: '/receive-stock',
+            builder: (context, state) => const ReceiveStockScreen(),
+          ),
+          GoRoute(
+            path: '/dispatch-stock',
+            builder: (context, state) => const DispatchStockScreen(),
+          ),
+          GoRoute(
+            path: '/relief-receipt',
+            builder: (context, state) => const ReliefReceiptScreen(),
           ),
           GoRoute(
             path: '/profile',

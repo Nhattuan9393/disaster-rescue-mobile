@@ -9,13 +9,36 @@ import 'package:disaster_rescue/features/household/providers/sos_provider.dart';
 import 'package:disaster_rescue/features/household/providers/safety_status_provider.dart';
 import 'package:disaster_rescue/features/household/widgets/action_tier_button.dart';
 
+import 'package:disaster_rescue/features/household/widgets/safety_reminder_dialog.dart';
+import 'package:disaster_rescue/features/household/providers/safety_reminder_provider.dart';
+
 class HouseholdHomeScreen extends ConsumerWidget {
   const HouseholdHomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sosState = ref.watch(sosProvider);
+    final sosState = ref.watch(sosProvider).buttonState;
     final safetyStatus = ref.watch(safetyStatusProvider);
+
+    // Lắng nghe popup xác nhận an toàn định kỳ (FR-07.1)
+    ref.listen<bool>(safetyReminderProvider, (previous, next) {
+      if (next) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const SafetyReminderDialog(),
+        ).then((_) {
+          ref.read(safetyReminderProvider.notifier).dismissReminder();
+        });
+      }
+    });
+    // Lắng nghe trạng thái SOS để điều hướng đến màn hình chi tiết (Screen 05)
+    ref.listen<SosState>(sosProvider, (previous, next) {
+      if (next.buttonState == SosButtonState.sent &&
+          previous?.buttonState != SosButtonState.sent) {
+        context.push('/sos-detail');
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.background,

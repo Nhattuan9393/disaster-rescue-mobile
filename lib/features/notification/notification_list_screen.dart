@@ -64,7 +64,7 @@ class NotificationListScreen extends ConsumerWidget {
         break;
       case NotificationType.evacuationOrder:
         icon = Icons.directions_run_rounded;
-        iconColor = AppColors.priorityHigh; // Red
+        iconColor = AppColors.priorityRed; // Red
         break;
       case NotificationType.mySosStatus:
         icon = Icons.local_hospital_rounded;
@@ -88,7 +88,7 @@ class NotificationListScreen extends ConsumerWidget {
           color: isUnread ? AppColors.primary.withValues(alpha: 0.05) : AppColors.surface,
           borderRadius: AppRadius.card,
           border: Border.all(
-            color: isUnread ? AppColors.primary.withValues(alpha: 0.2) : AppColors.border,
+            color: isUnread ? AppColors.primary.withValues(alpha: 0.2) : const Color(0xFFE0E0E0),
           ),
         ),
         child: Row(

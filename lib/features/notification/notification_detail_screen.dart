@@ -25,7 +25,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
           id: 'error',
           title: 'Lỗi',
           body: 'Không tìm thấy thông báo',
-          type: NotificationType.info,
+          type: NotificationType.weatherAlert,
           priority: NotificationPriority.info,
           createdAt: DateTime.now(),
         ));
@@ -78,7 +78,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
     Color headerColor;
     switch (notification.priority) {
       case NotificationPriority.urgent:
-        headerColor = AppColors.priorityHigh;
+        headerColor = AppColors.priorityRed;
         break;
       case NotificationPriority.warning:
         headerColor = AppColors.priorityOrange;
@@ -192,7 +192,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: const Color(0xFFE0E0E0)),
               ),
               child: Text(
                 notification.bodyTay!,
@@ -217,7 +217,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.card,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,7 +262,7 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.card,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
       ),
       child: const Center(
         child: Column(
@@ -351,13 +351,13 @@ class _NotificationDetailScreenState extends ConsumerState<NotificationDetailScr
               onPressed: () {
                 context.push('/home'); // Quay lại trang chủ để dùng SOS
               },
-              icon: const Icon(Icons.sos_rounded, color: AppColors.priorityHigh),
+              icon: const Icon(Icons.sos_rounded, color: AppColors.priorityRed),
               label: const Text(
                 'TÔI KHÔNG THỂ SƠ TÁN (GỬI SOS)',
-                style: TextStyle(color: AppColors.priorityHigh),
+                style: TextStyle(color: AppColors.priorityRed),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.priorityHigh),
+                side: const BorderSide(color: AppColors.priorityRed),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: AppRadius.button),
               ),

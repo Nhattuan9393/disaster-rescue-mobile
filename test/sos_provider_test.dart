@@ -5,7 +5,18 @@ import 'package:disaster_rescue/shared/widgets/sos_button.dart';
 import 'package:disaster_rescue/data/models/sos_models.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:disaster_rescue/data/models/offline_request.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:disaster_rescue/core/utils/connection_provider.dart';
+
+class MockConnectionNotifier extends ConnectionNotifier {
+  MockConnectionNotifier() {
+    state = ConnectionStatus.offline;
+  }
+
+  @override
+  Future<void> init() async {
+    // Do nothing to keep state offline
+  }
+}
 
 void main() {
   group('SosNotifier Tests', () {
@@ -20,7 +31,11 @@ void main() {
     });
 
     setUp(() {
-      container = ProviderContainer();
+      container = ProviderContainer(
+        overrides: [
+          connectionProvider.overrideWith((ref) => MockConnectionNotifier()),
+        ],
+      );
     });
 
     tearDown(() {
@@ -29,7 +44,7 @@ void main() {
 
     test('Initial state is idle', () {
       final state = container.read(sosProvider);
-      expect(state, equals(SosButtonState.idle));
+      expect(state.buttonState, equals(SosButtonState.idle));
     });
 
     test('sendSos changes state to sending then sent', () async {
@@ -39,13 +54,13 @@ void main() {
       final future = notifier.sendSos();
       
       // Ngay sau khi gọi, state phải là sending
-      expect(container.read(sosProvider), equals(SosButtonState.sending));
+      expect(container.read(sosProvider).buttonState, equals(SosButtonState.sending));
       
       // Chờ hoàn thành logic (mock delay 1000ms)
       await future;
       
       // Sau khi xong, state phải là sent
-      expect(container.read(sosProvider), equals(SosButtonState.sent));
+      expect(container.read(sosProvider).buttonState, equals(SosButtonState.sent));
     });
     
     test('calculatePriority returns correct score based on FR-02.3', () {

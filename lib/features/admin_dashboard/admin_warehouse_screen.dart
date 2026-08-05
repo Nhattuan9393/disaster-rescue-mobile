@@ -1,75 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:disaster_rescue/core/theme/app_theme.dart';
 import 'package:disaster_rescue/shared/widgets/stock_card.dart';
-import 'package:disaster_rescue/shared/widgets/line_entry_table.dart';
+import 'package:disaster_rescue/features/relief/providers/relief_provider.dart';
 
 /// Màn hình Quản lý kho hai tầng của Xã (FR-10.7).
-class AdminWarehouseScreen extends StatefulWidget {
+class AdminWarehouseScreen extends ConsumerWidget {
   const AdminWarehouseScreen({super.key});
 
   @override
-  State<AdminWarehouseScreen> createState() => _AdminWarehouseScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(reliefProvider);
 
-class _AdminWarehouseScreenState extends State<AdminWarehouseScreen> {
-  List<LineEntryRow> _entryLines = [
-    const LineEntryRow(name: 'Mì ăn liền', quantity: 200, unit: 'thùng'),
-    const LineEntryRow(name: 'Nước đóng chai', quantity: 150, unit: 'lốc'),
-  ];
-
-  void _handleReceivePackage() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Tiếp nhận Gói Cứu trợ (Lô hỗn hợp)'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Hệ thống sẽ tự sinh mã GCT-2025-xxxx khẩn cấp mà không chặn luồng cứu trợ.',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                StatefulBuilder(
-                  builder: (context, setDialogState) {
-                    return LineEntryTable(
-                      lines: _entryLines,
-                      onChanged: (newLines) {
-                        setDialogState(() {
-                          _entryLines = newLines;
-                        });
-                        setState(() {});
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Hủy'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã tiếp nhận thành công Gói cứu trợ GCT-2025-0082!')),
-                );
-              },
-              child: const Text('Lưu & Phân loại sau'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Padding(
@@ -90,9 +33,9 @@ class _AdminWarehouseScreenState extends State<AdminWarehouseScreen> {
                   ),
                 ),
                 ElevatedButton.icon(
-                  onPressed: _handleReceivePackage,
-                  icon: const Icon(Icons.add_box_rounded),
-                  label: const Text('Tiếp nhận Gói (MTQ)'),
+                  onPressed: () => context.push('/relief-stock'),
+                  icon: const Icon(Icons.inventory_rounded),
+                  label: const Text('Chi Tiết Kho'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.surface,
@@ -102,33 +45,61 @@ class _AdminWarehouseScreenState extends State<AdminWarehouseScreen> {
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
+            
+            // Thanh hành động nhanh cho Admin
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/receive-stock'),
+                    icon: const Icon(Icons.add_box_rounded, color: AppColors.statusSafe),
+                    label: const Text('Nhập Kho', style: TextStyle(color: AppColors.statusSafe)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.statusSafe),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/dispatch-stock'),
+                    icon: const Icon(Icons.indeterminate_check_box_rounded, color: AppColors.primary),
+                    label: const Text('Xuất Kho', style: TextStyle(color: AppColors.primary)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => context.push('/relief-receipt'),
+                    icon: const Icon(Icons.receipt_long_rounded, color: AppColors.infoBlue),
+                    label: const Text('Phát Hàng', style: TextStyle(color: AppColors.infoBlue)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.infoBlue),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+
             Expanded(
-              child: ListView(
-                children: const [
-                  StockCard(
-                    itemName: 'Mì ăn liền Hảo Hảo',
-                    currentQty: 320,
-                    thresholdQty: 500,
-                    unit: 'thùng',
-                    capacity: 1000,
-                  ),
-                  SizedBox(height: AppSpacing.sm),
-                  StockCard(
-                    itemName: 'Nước khoáng Lavie 1.5L',
-                    currentQty: 850,
-                    thresholdQty: 300,
-                    unit: 'chai',
-                    capacity: 1500,
-                  ),
-                  SizedBox(height: AppSpacing.sm),
-                  StockCard(
-                    itemName: 'Áo phao cứu sinh',
-                    currentQty: 45,
-                    thresholdQty: 100,
-                    unit: 'cái',
-                    capacity: 200,
-                  ),
-                ],
+              child: ListView.separated(
+                itemCount: state.items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                itemBuilder: (context, index) {
+                  final item = state.items[index];
+                  final isBelow = item.quantity < item.threshold;
+                  return StockCard(
+                    itemName: item.name,
+                    currentQty: item.quantity.toInt(),
+                    thresholdQty: item.threshold.toInt(),
+                    unit: item.unit,
+                    capacity: (item.threshold * 3).toInt(), // Giả lập sức chứa tối đa
+                  );
+                },
               ),
             ),
           ],

@@ -54,11 +54,12 @@ void main() {
 
     testWidgets('Initial route is LoginScreen', (tester) async {
       final container = ProviderContainer();
+      addTearDown(container.dispose);
       await tester.pumpWidget(createTestApp(container));
       await tester.pumpAndSettle();
 
       expect(find.byType(LoginScreen), findsOneWidget);
-      expect(find.text('ĐĂNG NHẬP THỬ NGHIỆM'), findsOneWidget);
+      expect(find.text('ĐĂNG NHẬP'), findsOneWidget);
     });
 
     testWidgets('Public entry redirects to SituationBoardScreen', (tester) async {
@@ -70,11 +71,12 @@ void main() {
       });
 
       final container = ProviderContainer();
+      addTearDown(container.dispose);
       await tester.pumpWidget(createTestApp(container));
       await tester.pumpAndSettle();
 
       // Tap on public entry button
-      final publicBtn = find.text('Xem Situation Board công khai');
+      final publicBtn = find.text('Xem tình hình thiên tai');
       expect(publicBtn, findsOneWidget);
       await tester.tap(publicBtn);
       await tester.pumpAndSettle();
@@ -84,6 +86,7 @@ void main() {
 
     testWidgets('Logging in as Household (1 role) redirects to HouseholdHomeScreen and shows household tabs', (tester) async {
       final container = ProviderContainer();
+      addTearDown(container.dispose);
       await tester.pumpWidget(createTestApp(container));
       await tester.pumpAndSettle();
 
@@ -95,13 +98,14 @@ void main() {
       expect(find.byType(HouseholdHomeScreen), findsOneWidget);
 
       // Verify Household Tabs in bottom navigation bar
-      expect(find.text('SOS 1 Chạm'), findsOneWidget);
-      expect(find.text('Hỗ trợ Sơ tán'), findsOneWidget);
-      expect(find.text('Bảng tin công khai'), findsOneWidget);
+      expect(find.text('Trang chủ'), findsOneWidget);
+      expect(find.text('Hỗ trợ'), findsOneWidget);
+      expect(find.text('Hồ sơ'), findsOneWidget);
     });
 
     testWidgets('Logging in as Admin (1 role) redirects to AdminMapScreen and shows admin tabs', (tester) async {
       final container = ProviderContainer();
+      addTearDown(container.dispose);
       await tester.pumpWidget(createTestApp(container));
       await tester.pumpAndSettle();
 
@@ -121,6 +125,7 @@ void main() {
 
     testWidgets('Logging in with multiple roles redirects to RoleSelectorScreen', (tester) async {
       final container = ProviderContainer();
+      addTearDown(container.dispose);
       await tester.pumpWidget(createTestApp(container));
       await tester.pumpAndSettle();
 
