@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:disaster_rescue/core/theme/app_theme.dart';
+import 'package:disaster_rescue/features/sos/providers/report_to_commune_provider.dart';
 
 /// Loại báo tin — quyết định 2.1: chỉ còn 2 luồng (B và C).
 enum _ReportType { helpOther, areaReport }
@@ -44,8 +45,6 @@ class _ReportToCommuneScreenState
   final _descCController = TextEditingController();
   final _locationCController = TextEditingController();
 
-  bool _isSubmitting = false;
-
   @override
   void dispose() {
     _addressController.dispose();
@@ -66,22 +65,42 @@ class _ReportToCommuneScreenState
   }
 
   Future<void> _handleSubmit() async {
-    setState(() => _isSubmitting = true);
-    await Future.delayed(const Duration(milliseconds: 1000));
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
+    final notifier = ref.read(reportToCommuneProvider.notifier);
+    bool success = false;
 
-    final message = _reportType == _ReportType.helpOther
-        ? 'Đã gửi báo tin giúp người khác — chờ admin xác minh'
-        : 'Đã gửi báo tình hình khu vực — hiển thị trên bản đồ';
+    if (_reportType == _ReportType.helpOther) {
+      success = await notifier.submitReportB(
+        address: _addressController.text,
+        description: _descBController.text,
+      );
+    } else if (_reportType == _ReportType.areaReport) {
+      success = await notifier.submitReportC(
+        incidentType: _incidentType?.label ?? '',
+        location: _locationCController.text,
+        description: _descCController.text,
+      );
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.statusSafe,
-      ),
-    );
-    context.pop();
+    if (success && mounted) {
+      final state = ref.read(reportToCommuneProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(state.successMessage ?? 'Thành công'),
+          backgroundColor: AppColors.statusSafe,
+        ),
+      );
+      context.pop();
+    } else if (mounted) {
+      final state = ref.read(reportToCommuneProvider);
+      if (state.errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(state.errorMessage!),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -517,15 +536,17 @@ class _ReportToCommuneScreenState
   }
 
   Widget _buildSubmitButton() {
+    final state = ref.watch(reportToCommuneProvider);
+    
     return ElevatedButton(
-      onPressed: _isSubmitting ? null : _handleSubmit,
+      onPressed: state.isSubmitting ? null : _handleSubmit,
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.priorityOrange,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.button),
       ),
-      child: _isSubmitting
+      child: state.isSubmitting
           ? const SizedBox(
               height: 20, width: 20,
               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
