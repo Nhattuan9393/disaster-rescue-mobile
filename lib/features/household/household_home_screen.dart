@@ -31,6 +31,7 @@ class HouseholdHomeScreen extends ConsumerWidget {
           ref.read(safetyReminderProvider.notifier).dismissReminder();
         });
       }
+    });
     // Lắng nghe trạng thái SOS để điều hướng đến màn hình chi tiết (Screen 05)
     ref.listen<SosState>(sosProvider, (previous, next) {
       if (next.buttonState == SosButtonState.sent &&

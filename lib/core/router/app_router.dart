@@ -16,6 +16,8 @@ import 'package:disaster_rescue/features/notification/notification_list_screen.d
 import 'package:disaster_rescue/features/notification/notification_detail_screen.dart';
 import 'package:disaster_rescue/features/sos/report_to_commune_screen.dart';
 import 'package:disaster_rescue/features/sos/sos_detail_screen.dart';
+import 'package:disaster_rescue/features/household_registry/manual_entry_screen.dart';
+import 'package:disaster_rescue/features/household_registry/duplicate_resolution_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_map_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_households_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_warehouse_screen.dart';
@@ -129,6 +131,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/sos-detail',
             builder: (context, state) => const SosDetailScreen(),
+          ),
+          GoRoute(
+            path: '/manual-entry',
+            builder: (context, state) => const ManualEntryScreen(),
+          ),
+          GoRoute(
+            path: '/duplicate-resolution',
+            builder: (context, state) => const DuplicateResolutionScreen(),
           ),
           GoRoute(
             path: '/profile',
