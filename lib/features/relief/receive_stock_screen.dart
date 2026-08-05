@@ -205,14 +205,13 @@ class _ReceiveStockScreenState extends ConsumerState<ReceiveStockScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.border),
+                border: Border.all(color: const Color(0xFFE0E0E0)),
               ),
               child: Column(
-                children: _packageLines.map((line) => ListTile(
+                children: _packageLines.map<Widget>((line) => ListTile(
                       dense: true,
                       title: Text(line.rawName),
                       trailing: Text('${line.quantity.toInt()} ${line.unit}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      trailingAndLeadingHasContentWidth: true,
                     )).toList(),
               ),
             ),

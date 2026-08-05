@@ -11,7 +11,6 @@ import 'package:disaster_rescue/features/auth/profile_screen.dart';
 import 'package:disaster_rescue/features/situation_board/situation_board_screen.dart';
 import 'package:disaster_rescue/features/household/household_home_screen.dart';
 import 'package:disaster_rescue/features/household/evacuation_request_screen.dart';
-import 'package:disaster_rescue/features/household/safety_confirmation_screen.dart';
 import 'package:disaster_rescue/features/notification/notification_list_screen.dart';
 import 'package:disaster_rescue/features/notification/notification_detail_screen.dart';
 import 'package:disaster_rescue/features/sos/report_to_commune_screen.dart';

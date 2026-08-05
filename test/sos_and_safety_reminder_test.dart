@@ -14,6 +14,11 @@ class MockConnectionNotifier extends ConnectionNotifier {
   MockConnectionNotifier() {
     state = ConnectionStatus.offline;
   }
+
+  @override
+  Future<void> init() async {
+    // Do nothing to keep state offline
+  }
 }
 
 class MockSafetyStatusNotifier extends SafetyStatusNotifier {

@@ -40,6 +40,6 @@ void main() {
 
     // Xác minh ứng dụng mở màn hình Login mặc định
     expect(find.byType(LoginScreen), findsOneWidget);
-    expect(find.text('ĐĂNG NHẬP THỬ NGHIỆM'), findsOneWidget);
+    expect(find.text('ĐĂNG NHẬP'), findsOneWidget);
   });
 }

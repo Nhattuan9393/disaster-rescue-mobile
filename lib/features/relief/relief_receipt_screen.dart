@@ -159,16 +159,15 @@ class _ReliefReceiptScreenState extends ConsumerState<ReliefReceiptScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: const Color(0xFFE0E0E0)),
                 ),
                 child: Column(
-                  children: _itemsToDistribute.map((entry) {
+                  children: _itemsToDistribute.map<Widget>((entry) {
                     final item = reliefState.items.firstWhere((i) => i.id == entry.itemId);
                     return ListTile(
                       dense: true,
                       title: Text(item.name),
                       trailing: Text('${entry.qty.toInt()} ${item.unit}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                      trailingAndLeadingHasContentWidth: true,
                     );
                   }).toList(),
                 ),

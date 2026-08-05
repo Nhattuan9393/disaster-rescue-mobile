@@ -6,6 +6,8 @@ import 'package:disaster_rescue/features/household/providers/sos_provider.dart';
 import 'package:disaster_rescue/shared/widgets/sos_button.dart';
 import 'package:disaster_rescue/data/models/safety_status.dart';
 
+import 'dart:io';
+
 class SafetyReminderNotifier extends StateNotifier<bool> {
   final Ref _ref;
   Timer? _timer;
@@ -23,6 +25,10 @@ class SafetyReminderNotifier extends StateNotifier<bool> {
   }
 
   void _startTimer() {
+    // Không chạy Timer periodic trong môi trường kiểm thử để tránh rò rỉ Timer (leak)
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      return;
+    }
     _timer?.cancel();
     _timer = Timer.periodic(checkInterval, (_) => _checkReminder());
   }

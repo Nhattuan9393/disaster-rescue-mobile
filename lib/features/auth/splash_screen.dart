@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:disaster_rescue/core/theme/app_theme.dart';
 import 'auth_provider.dart';
+import 'package:disaster_rescue/data/models/user_role.dart';
 
 /// Màn 01 — Splash screen hiển thị logo + kiểm tra auth state.
 /// Tối đa 2 giây rồi chuyển sang Login hoặc Role/Home.
@@ -37,6 +38,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final auth = ref.read(authProvider);
     if (auth.isAuthenticated) {
       context.go('/');
+    } else if (auth.activeRole == UserRole.public) {
+      context.go('/public-board');
     } else {
       context.go('/login');
     }

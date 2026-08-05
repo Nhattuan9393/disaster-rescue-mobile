@@ -101,7 +101,7 @@ class DuplicateResolutionScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                Container(width: 1, height: 180, color: AppColors.border),
+                Container(width: 1, height: 180, color: const Color(0xFFE0E0E0)),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
                   child: Column(
