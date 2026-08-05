@@ -15,6 +15,7 @@ import 'package:disaster_rescue/features/household/safety_confirmation_screen.da
 import 'package:disaster_rescue/features/notification/notification_list_screen.dart';
 import 'package:disaster_rescue/features/notification/notification_detail_screen.dart';
 import 'package:disaster_rescue/features/sos/report_to_commune_screen.dart';
+import 'package:disaster_rescue/features/sos/sos_detail_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_map_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_households_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_warehouse_screen.dart';
@@ -124,6 +125,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/report-to-commune',
             builder: (context, state) => const ReportToCommuneScreen(),
+          ),
+          GoRoute(
+            path: '/sos-detail',
+            builder: (context, state) => const SosDetailScreen(),
           ),
           GoRoute(
             path: '/profile',
