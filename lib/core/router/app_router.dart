@@ -11,6 +11,9 @@ import 'package:disaster_rescue/features/auth/profile_screen.dart';
 import 'package:disaster_rescue/features/situation_board/situation_board_screen.dart';
 import 'package:disaster_rescue/features/household/household_home_screen.dart';
 import 'package:disaster_rescue/features/household/evacuation_request_screen.dart';
+import 'package:disaster_rescue/features/household/safety_confirmation_screen.dart';
+import 'package:disaster_rescue/features/notification/notification_list_screen.dart';
+import 'package:disaster_rescue/features/notification/notification_detail_screen.dart';
 import 'package:disaster_rescue/features/sos/report_to_commune_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_map_screen.dart';
 import 'package:disaster_rescue/features/admin_dashboard/admin_households_screen.dart';
@@ -125,6 +128,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
+          ),
+          GoRoute(
+            path: '/notifications',
+            builder: (context, state) => const NotificationListScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return NotificationDetailScreen(id: id);
+                },
+              ),
+            ],
           ),
 
           // ── Admin xã routes ──
