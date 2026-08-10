@@ -7,132 +7,106 @@ class RoleSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/login');
+            }
+          },
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 10),
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.red.shade700,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('🆘', style: TextStyle(fontSize: 24)),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'CỨU HỘ THIÊN TAI XÃ',
-                          style: TextStyle(
-                            color: Colors.red.shade900,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        const Text(
-                          'Xã Bình Liêu — Quảng Ninh',
-                          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              // 1. Thẻ ghi chú màu xanh dương (Chuẩn Ảnh 1 Prototype s03)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Text(
+                  'ℹ️ Màn này CHỈ hiện khi user có ≥2 vai trò. Có 1 vai trò ➔ vào thẳng màn tương ứng.',
+                  style: TextStyle(color: Colors.blue.shade900, fontSize: 11, fontWeight: FontWeight.bold, height: 1.3),
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
+              // 2. Tiêu đề chào tên User
               const Text(
-                'ĐĂNG NHẬP / CHỌN VAI TRÒ',
-                style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5),
+                'Xin chào, Nguyễn Văn A!',
+                style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 24),
               ),
               const SizedBox(height: 4),
               const Text(
-                'Vui lòng chọn vai trò thao tác trên thiết bị này:',
-                style: TextStyle(color: Colors.black87, fontSize: 13),
+                'Bạn có 3 vai trò — chọn vai trò muốn dùng',
+                style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // Card 1: Hộ Dân
-              _buildRoleCard(
+              // 3. DANH SÁCH THẺ VAI TRÒ (3 VAI TRÒ CHUẨN)
+              _buildPrototypeRoleCard(
                 context,
                 icon: '🏠',
-                color: const Color(0xFFC62828),
-                title: 'Hộ Dân (Resident SOS)',
-                subtitle: 'Gửi tin cứu hộ SOS khẩn cấp, báo tin cứu trợ, xem vị trí điểm sơ tán & điểm danh an toàn.',
+                iconBg: const Color(0xFFD32F2F),
+                title: 'Hộ dân',
+                subtitle: 'Gửi SOS, xác nhận an toàn cho gia đình',
                 route: '/resident',
               ),
               const SizedBox(height: 12),
 
-              // Card 2: Admin Xã
-              _buildRoleCard(
+              _buildPrototypeRoleCard(
                 context,
                 icon: '🏛️',
-                color: Colors.blue.shade900,
-                title: 'Admin Xã — Ban Chỉ Huy',
-                subtitle: 'Theo dõi bản đồ SOS thời gian thực, điều phối đội cứu hộ, gộp tin báo trùng & phát lệnh sơ tán Tiếng Tày.',
+                iconBg: Colors.blue.shade900,
+                title: 'Admin phụ — Trưởng thôn',
+                subtitle: 'Điều phối cứu hộ trong thôn Pắc Liềng',
                 route: '/admin',
               ),
               const SizedBox(height: 12),
 
-              // Card 3: Đội Cứu Hộ
-              _buildRoleCard(
+              _buildPrototypeRoleCard(
                 context,
                 icon: '⛑️',
-                color: Colors.green.shade800,
-                title: 'Đội Cứu Hộ (Rescue Team)',
-                subtitle: 'Dân quân thôn & Tổ xung kích, tiếp nhận nhiệm vụ, bấm "Tôi đi", định vị GPS & báo hoàn thành.',
+                iconBg: Colors.green.shade800,
+                title: 'Đội Cứu hộ',
+                subtitle: 'Dân quân thôn — nhận nhiệm vụ',
                 route: '/rescue',
-              ),
-              const SizedBox(height: 12),
-
-              // Card 4: Bảng Tình Hình (Công Khai)
-              _buildRoleCard(
-                context,
-                icon: '📊',
-                color: Colors.orange.shade900,
-                title: 'Bảng Tình Hình Thiên Tai (Công Khai)',
-                subtitle: 'Xem 6 chỉ số tuyệt đối lũ lụt toàn xã, nhu cầu tiếp tế khẩn cấp (Không cần đăng nhập).',
-                route: '/situation-board',
               ),
               const SizedBox(height: 24),
 
-              // Informational Banner for Multi-device Testing
+              // 4. Thẻ ghi chú màu cam (Situation Board KHÔNG phải vai trò)
               Container(
-                padding: const EdgeInsets.all(14),
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
+                  color: const Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.amber.shade400),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.devices, color: Colors.blue, size: 24),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '🔥 Hỗ trợ Kiểm thử Liên thông 3 Thiết bị',
-                            style: TextStyle(color: Colors.blue.shade900, fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                          const SizedBox(height: 2),
-                          const Text(
-                            'Mở App trên 3 thiết bị khác nhau (hoặc 3 tab trình duyệt): Thiết bị 1 mở Hộ Dân, Thiết bị 2 mở Admin, Thiết bị 3 mở Đội Cứu Hộ để test đồng bộ thời gian thực qua Firebase.',
-                            style: TextStyle(color: Colors.black87, fontSize: 10.5, height: 1.3),
-                          ),
-                        ],
-                      ),
+                    Text(
+                      '⚠️ Situation Board KHÔNG phải vai trò',
+                      style: TextStyle(color: Colors.orange.shade900, fontWeight: FontWeight.bold, fontSize: 11.5),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Đó là trang công khai không cần đăng nhập — điểm vào ở màn Đăng nhập và mục Hồ sơ.',
+                      style: TextStyle(color: Colors.black87, fontSize: 10.5, height: 1.3),
                     ),
                   ],
                 ),
@@ -144,10 +118,10 @@ class RoleSelectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRoleCard(
+  Widget _buildPrototypeRoleCard(
     BuildContext context, {
     required String icon,
-    required Color color,
+    required Color iconBg,
     required String title,
     required String subtitle,
     required String route,
@@ -155,47 +129,46 @@ class RoleSelectionScreen extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2)),
         ],
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         onTap: () => context.push(route),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Center(child: Text(icon, style: const TextStyle(fontSize: 24))),
+                child: Center(child: Text(icon, style: const TextStyle(fontSize: 20))),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       title,
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       subtitle,
-                      style: TextStyle(color: Colors.grey.shade700, fontSize: 11, height: 1.3),
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+              const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
             ],
           ),
         ),

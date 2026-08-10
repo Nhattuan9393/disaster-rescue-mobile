@@ -33,9 +33,10 @@ import '../../features/resident/presentation/screens/offline_sms_fallback_screen
 import '../../features/sos/presentation/screens/escalate_to_district_screen.dart';
 import '../../features/rescue_team/presentation/screens/volunteer_registration_screen.dart';
 
-import 'package:flutter/material.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_household_screen.dart';
+import '../../features/auth/presentation/screens/role_selection_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -48,6 +49,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/select-role',
+        builder: (context, state) => const RoleSelectionScreen(),
+      ),
+      GoRoute(
+        path: '/register-household',
+        builder: (context, state) => const RegisterHouseholdScreen(),
       ),
       GoRoute(
         path: '/resident',
