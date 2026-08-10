@@ -1,0 +1,20 @@
+{
+  "project": "DisasterRescue",
+  "srs": "DisasterRescue-SRS-Full(1).md",
+  "srs_version": "1.1",
+  "created_from_source": true,
+  "documents": [
+    "README.md",
+    "01_PROJECT_CONSTITUTION.md",
+    "02_AGENT_RULES.md",
+    "03_ARCHITECTURE_CONTRACT.md",
+    "04_DATA_SECURITY_CONTRACT.md",
+    "05_UI_CONTRACT.md",
+    "06_ACCEPTANCE_AND_DOD.md",
+    "07_BACKLOG.md",
+    "08_OPEN_DECISIONS.md",
+    "09_MASTER_AGENT_PROMPT.md",
+    "10_TASK_TEMPLATE.md",
+    "11_PHASE1_3_DEVICE_TEST.md"
+  ]
+}

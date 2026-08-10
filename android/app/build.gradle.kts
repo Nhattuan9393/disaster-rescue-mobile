@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.tlu.disasterrescue.disaster_rescue"
+    namespace = "com.disasterrescue.disaster_rescue"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.tlu.disasterrescue.disaster_rescue"
+        applicationId = "com.disasterrescue.disaster_rescue"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

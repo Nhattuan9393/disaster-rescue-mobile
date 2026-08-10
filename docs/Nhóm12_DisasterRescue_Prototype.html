@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DisasterRescue — Prototype Viewer</title>
+<style>
+:root{
+--red:#D32F2F;--redL:#FF6659;--orange:#F57C00;--yellow:#F9A825;--green:#388E3C;--blue:#1976D2;--gray:#616161;
+--bg:#F5F5F5;--sf:#fff;--warn:#FFF8E1;--t1:#212121;--t2:#757575;--t3:#BDBDBD;--bd:#E0E0E0;--map:#DDE6E2;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,'Segoe UI',Roboto,-apple-system,sans-serif;background:#ECEFF1;color:var(--t1);font-size:14px}
+.app{display:grid;grid-template-columns:290px 1fr 330px;gap:18px;padding:18px;max-width:1720px;margin:0 auto;align-items:start}
+
+/* ---------- SIDEBAR ---------- */
+aside{background:var(--sf);border-radius:14px;padding:18px 14px;position:sticky;top:18px;max-height:calc(100vh - 36px);overflow-y:auto}
+aside h1{font-size:13px;font-weight:800;letter-spacing:.6px;color:var(--t1);padding:0 8px 12px}
+.rg{font-size:11px;font-weight:800;letter-spacing:.4px;color:var(--blue);padding:14px 8px 6px;display:flex;align-items:center;gap:6px}
+.rg.r2{color:var(--orange)}.rg.r3{color:var(--green)}
+.nv{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13.5px}
+.nv:hover{background:#F5F7FA}
+.nv.on{background:#E8F0FE;font-weight:600}
+.nv .tag{font-size:11px;font-weight:700;color:var(--t2)}
+.nv.on .tag{color:var(--blue)}
+
+/* ---------- STAGE ---------- */
+.stage{background:#E4E8EA;border-radius:14px;padding:26px 20px;display:flex;flex-direction:column;align-items:center;gap:14px;min-height:calc(100vh - 36px)}
+.ctrl{display:flex;gap:8px;align-items:center}
+.ctrl button{border:1px solid var(--bd);background:var(--sf);border-radius:8px;padding:7px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.ctrl button:hover{background:#F5F7FA}
+.ctrl .pos{font-size:12px;color:var(--t2);padding:0 6px}
+
+.phone{width:390px;height:844px;background:var(--bg);border-radius:26px;overflow:hidden;box-shadow:0 10px 34px rgba(0,0,0,.2);border:9px solid #1a1a1a;position:relative;flex-shrink:0}
+.scr{display:none;height:100%;flex-direction:column}
+.scr.on{display:flex}
+
+/* ---------- PHONE PARTS ---------- */
+.sb{height:34px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 18px;font-size:12px;font-weight:600;flex-shrink:0}
+.sb.dk{background:#212121;color:#fff}
+.ab{height:52px;background:#fff;display:flex;justify-content:space-between;align-items:center;padding:0 15px;flex-shrink:0;border-bottom:1px solid #EEE}
+.ab .t{font-size:16px;font-weight:700}
+.ab .r{font-size:12px;font-weight:700;color:var(--red)}
+.bd{flex:1;overflow-y:auto;padding:13px}
+.bd::-webkit-scrollbar{width:0}
+.bn{height:62px;background:#fff;border-top:1px solid var(--bd);display:flex;flex-shrink:0}
+.bn div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:9px;color:var(--t2)}
+.bn div i{font-style:normal;font-size:17px}
+.bn div.on{color:var(--red);font-weight:700}
+
+.ban{background:var(--warn);padding:9px 13px;display:flex;gap:7px;align-items:center;font-size:11.5px;font-weight:500;color:var(--orange);flex-shrink:0}
+.card{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:9px}
+.card.rd{background:#FFEBEE;border-color:var(--red)}
+.card.gr{background:#E8F5E9;border-color:var(--green)}
+.card.or{background:#FFF3E0;border-color:var(--orange)}
+.card.bl{background:#E3F2FD;border-color:var(--blue)}
+.card.gy{background:#F5F5F5}
+.lb{font-size:9px;font-weight:800;letter-spacing:.4px;color:var(--t2);margin:11px 0 6px}
+.lb.rd{color:var(--red)}.lb.or{color:var(--orange)}.lb.bl{color:var(--blue)}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:50px;font-size:10.5px;font-weight:600;border:1px solid var(--bd);background:#fff;color:var(--gray);margin:0 5px 5px 0}
+.chip.on{background:var(--gray);color:#fff;border-color:transparent}
+.chip.rd{background:var(--red);color:#fff;border:0}.chip.or{background:var(--orange);color:#fff;border:0}
+.chip.gr{background:var(--green);color:#fff;border:0}.chip.bl{background:var(--blue);color:#fff;border:0}
+.chip.gy{background:var(--gray);color:#fff;border:0}.chip.yl{background:var(--yellow);color:#fff;border:0}
+.btn{display:flex;align-items:center;justify-content:center;border-radius:8px;font-weight:700;padding:13px;font-size:14px;margin-bottom:8px;cursor:pointer}
+.btn.p{background:var(--red);color:#fff}.btn.g{background:var(--green);color:#fff}
+.btn.o{background:var(--orange);color:#fff}.btn.b{background:var(--blue);color:#fff}
+.btn.gh{background:#fff;border:1px solid var(--bd);color:var(--t2)}
+.btn.ghr{background:#fff;border:1.5px solid var(--red);color:var(--red)}
+.btn.ghb{background:#fff;border:1.5px solid var(--blue);color:var(--blue)}
+.btn.ghg{background:#fff;border:1.5px solid var(--green);color:var(--green)}
+.btn.ghо{background:#fff;border:1.5px solid var(--orange);color:var(--orange)}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.fld{background:#fff;border:1px solid var(--bd);border-radius:8px;padding:12px 13px;font-size:13px;margin-bottom:9px;display:flex;justify-content:space-between}
+.fld .ph{color:var(--t3)}
+.mapx{background:var(--map);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;color:#546E6B;position:relative;overflow:hidden}
+.bar{height:7px;background:#EEE;border-radius:4px;overflow:hidden;margin:5px 0}
+.bar i{display:block;height:100%;border-radius:4px}
+.sos{background:var(--red);border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:2px}
+.sos .e{font-size:38px}.sos .n{font-size:32px;font-weight:900;letter-spacing:2px}.sos .s{font-size:13px;font-weight:700}
+.tier{border:2px solid;border-radius:11px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8px 5px;gap:3px}
+.tier .e{font-size:20px}.tier .n{font-size:12.5px;font-weight:700}.tier .d{font-size:9px;color:var(--t2)}
+.tabs{display:flex;background:#fff;border-bottom:1px solid var(--bd);flex-shrink:0}
+.tabs div{flex:1;text-align:center;padding:11px 4px;font-size:11px;color:var(--t2);border-bottom:3px solid transparent}
+.tabs div.on{color:var(--red);font-weight:700;border-bottom-color:var(--red)}
+.kpi{display:flex;gap:7px;margin-bottom:8px}
+.kpi div{flex:1;background:#fff;border-radius:8px;padding:9px;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.kpi .n{font-size:20px;font-weight:800}.kpi .l{font-size:9px;color:var(--t2)}
+.pin{position:absolute;width:30px;height:30px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+.dim{position:absolute;inset:0;background:rgba(33,33,33,.55);display:flex;flex-direction:column;justify-content:center;padding:16px;gap:9px}
+.tbl{width:100%;font-size:10.5px;border-collapse:collapse}
+.tbl td{padding:3px 0}.tbl td:last-child{text-align:right;font-weight:700}
+
+/* ---------- INFO PANEL ---------- */
+.info{background:var(--sf);border-radius:14px;padding:18px;position:sticky;top:18px;max-height:calc(100vh - 36px);overflow-y:auto}
+.info h2{font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--t1);margin-bottom:12px}
+.info .sec{margin-bottom:16px}
+.info .k{font-size:10px;font-weight:800;letter-spacing:.4px;color:var(--t2);margin-bottom:3px}
+.info .v{font-size:13px;color:var(--blue);font-weight:600;line-height:1.45}
+.info .p{font-size:12.5px;color:var(--t1);line-height:1.55}
+.info .fr{display:inline-block;background:#E3F2FD;color:var(--blue);font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;margin:0 4px 4px 0}
+.info .warn{background:var(--warn);border-left:3px solid var(--orange);padding:9px 11px;border-radius:0 6px 6px 0;font-size:11.5px;line-height:1.5;color:#6d4c00}
+hr{border:0;border-top:1px solid #F0F0F0;margin:14px 0}
+@media(max-width:1400px){.app{grid-template-columns:250px 1fr}.info{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ================= SIDEBAR ================= -->
+<aside>
+  <h1>HỆ THỐNG DISASTERRESCUE</h1>
+
+  <div class="rg">🏠 ROLE: HỘ DÂN</div>
+  <div class="nv on" data-s="s01"><span>01 Splash</span><span class="tag">Start</span></div>
+  <div class="nv" data-s="s02"><span>02 Đăng nhập</span><span class="tag">Auth</span></div>
+  <div class="nv" data-s="s03"><span>03 Chọn vai trò</span><span class="tag">Auth</span></div>
+  <div class="nv" data-s="s04"><span>04 Trang chủ hộ dân</span><span class="tag">Tab 1</span></div>
+  <div class="nv" data-s="s05"><span>05 SOS 1 chạm</span><span class="tag">Action</span></div>
+  <div class="nv" data-s="s06"><span>06 Báo tin cho xã</span><span class="tag">Action</span></div>
+  <div class="nv" data-s="s06b"><span>06b Cần hỗ trợ sơ tán</span><span class="tag">Action</span></div>
+  <div class="nv" data-s="s07"><span>07 Xác nhận an toàn</span><span class="tag">Modal</span></div>
+  <div class="nv" data-s="s08"><span>08 Thông báo</span><span class="tag">Tab 2</span></div>
+  <div class="nv" data-s="s09"><span>09 Đăng ký hộ dân</span><span class="tag">Form</span></div>
+  <div class="nv" data-s="s24"><span>24 Chi tiết thông báo</span><span class="tag">Detail</span></div>
+
+  <div class="rg r2">🏛️ ROLE: ADMIN XÃ</div>
+  <div class="nv" data-s="s10"><span>10 Dashboard bản đồ</span><span class="tag">Tab 1</span></div>
+  <div class="nv" data-s="s11"><span>11 Import dân cư</span><span class="tag">FAB</span></div>
+  <div class="nv" data-s="s12"><span>12 Đối chiếu hộ dân</span><span class="tag">Tab 2</span></div>
+  <div class="nv" data-s="s13"><span>13 Lực lượng cứu hộ</span><span class="tag">Tab 3</span></div>
+  <div class="nv" data-s="s14"><span>14 Duyệt báo cáo</span><span class="tag">FAB</span></div>
+  <div class="nv" data-s="s15"><span>15 Điểm sơ tán</span><span class="tag">Sub</span></div>
+  <div class="nv" data-s="s16"><span>16 Phát lệnh sơ tán</span><span class="tag">FAB</span></div>
+  <div class="nv" data-s="s17"><span>17 Kho cứu trợ</span><span class="tag">Tab 4</span></div>
+  <div class="nv" data-s="s18"><span>18 Leo thang &amp; Nhật ký</span><span class="tag">Tab 5</span></div>
+  <div class="nv" data-s="s25"><span>25 Nhập hộ thủ công</span><span class="tag">Form</span></div>
+  <div class="nv" data-s="s26"><span>26 Xử lý trùng lặp</span><span class="tag">Sub</span></div>
+  <div class="nv" data-s="s27"><span>27 Chi tiết đội cứu hộ</span><span class="tag">Detail</span></div>
+  <div class="nv" data-s="s28"><span>28 Chi tiết báo cáo</span><span class="tag">Detail</span></div>
+  <div class="nv" data-s="s29"><span>29 Điểm sơ tán + Check-in</span><span class="tag">Sub</span></div>
+  <div class="nv" data-s="s30"><span>30 Nhập kho</span><span class="tag">Sub</span></div>
+  <div class="nv" data-s="s31"><span>31 Xuất kho cho đội</span><span class="tag">Sub</span></div>
+  <div class="nv" data-s="s32"><span>32 Chi tiết gói cứu trợ</span><span class="tag">Detail</span></div>
+  <div class="nv" data-s="s33"><span>33 Chi tiết nhật ký</span><span class="tag">Detail</span></div>
+  <div class="nv" data-s="s37"><span>37 Lực lượng thường trực</span><span class="tag">Prep</span></div>
+  <div class="nv" data-s="s38"><span>38 Tạo/sửa đội thường trực</span><span class="tag">Form</span></div>
+  <div class="nv" data-s="s41"><span>41 Chi tiết hộ dân</span><span class="tag">Detail</span></div>
+
+  <div class="rg r3">⛑️ ROLE: ĐỘI CỨU HỘ &amp; CÔNG KHAI</div>
+  <div class="nv" data-s="s19"><span>19 Đăng ký MTQ</span><span class="tag">Form</span></div>
+  <div class="nv" data-s="s20"><span>20 Danh sách nhiệm vụ</span><span class="tag">Task</span></div>
+  <div class="nv" data-s="s21"><span>21 Chi tiết SOS</span><span class="tag">Detail</span></div>
+  <div class="nv" data-s="s22"><span>22 Báo cáo hoàn thành</span><span class="tag">Action</span></div>
+  <div class="nv" data-s="s23"><span>23 Situation Board</span><span class="tag">Public</span></div>
+  <div class="nv" data-s="s34"><span>34 Đổi trạng thái đội</span><span class="tag">Action</span></div>
+  <div class="nv" data-s="s35"><span>35 Phát hàng + Biên nhận</span><span class="tag">Action</span></div>
+  <div class="nv" data-s="s36"><span>36 Xác nhận hộ an toàn</span><span class="tag">Action</span></div>
+  <div class="nv" data-s="s39"><span>39 Quét mã QR</span><span class="tag">Scan</span></div>
+  <div class="nv" data-s="s40"><span>40 Kết quả quét QR</span><span class="tag">Sub</span></div>
+</aside>
+
+<!-- ================= STAGE ================= -->
+<div class="stage">
+  <div class="ctrl">
+    <button id="prev">‹ Trước</button>
+    <span class="pos" id="pos">1 / 16</span>
+    <button id="next">Sau ›</button>
+  </div>
+
+  <div class="phone">
+
+    <!-- 01 SPLASH -->
+    <div class="scr on" id="s01">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="bd" style="background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px">
+        <div style="width:110px;height:110px;background:var(--red);border-radius:26px;display:flex;align-items:center;justify-content:center;font-size:48px">🆘</div>
+        <div style="font-size:28px;font-weight:800;color:var(--red)">DisasterRescue</div>
+        <div style="font-size:14px;color:var(--t2)">Hệ thống Điều phối Cứu hộ</div>
+        <div style="display:flex;gap:7px">
+          <i style="width:9px;height:9px;border-radius:50%;background:var(--red)"></i>
+          <i style="width:9px;height:9px;border-radius:50%;background:var(--red);opacity:.5"></i>
+          <i style="width:9px;height:9px;border-radius:50%;background:var(--red);opacity:.25"></i>
+        </div>
+        <div style="font-size:11px;color:var(--t3)">Phiên bản 1.0 — Quảng Ninh</div>
+      </div>
+    </div>
+
+    <!-- 02 LOGIN -->
+    <div class="scr" id="s02">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="bd" style="background:#fff">
+        <div style="display:flex;gap:11px;align-items:center;margin-bottom:14px">
+          <div style="width:44px;height:44px;background:var(--red);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px">🆘</div>
+          <div style="font-size:17px;font-weight:800;color:var(--red)">DisasterRescue</div>
+        </div>
+        <div style="font-size:24px;font-weight:800;margin-bottom:5px">Đăng nhập</div>
+        <div style="font-size:12.5px;color:var(--t2);margin-bottom:15px">Đăng nhập để gửi SOS và nhận cảnh báo sớm</div>
+        <div class="lb">SỐ ĐIỆN THOẠI HOẶC EMAIL</div>
+        <div class="fld">0987 654 321</div>
+        <div class="lb">MẬT KHẨU</div>
+        <div class="fld"><span>••••••••</span><span>👁</span></div>
+        <div style="background:#FFEBEE;border-radius:6px;padding:9px 11px;font-size:11.5px;font-weight:600;color:var(--red);margin-bottom:11px">⚠️ Thông tin đăng nhập không đúng</div>
+        <div class="btn p">ĐĂNG NHẬP</div>
+        <div style="height:1px;background:var(--bd);margin:13px 0"></div>
+        <div class="btn ghb" style="font-size:12.5px">👁 Xem tình hình thiên tai (không cần đăng nhập)</div>
+        <div style="text-align:center;margin-top:12px;display:flex;flex-direction:column;gap:9px">
+          <span style="font-size:13px;font-weight:700;color:var(--red)">Đăng ký hộ dân</span>
+          <span style="font-size:13px;font-weight:700;color:var(--red)">Đăng ký đội cứu hộ / MTQ</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 03 ROLE SELECT -->
+    <div class="scr" id="s03">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="bd" style="display:flex;flex-direction:column;justify-content:center">
+        <div class="card bl" style="font-size:10px;font-weight:600;color:var(--blue);line-height:1.5">
+          ℹ️ Màn này CHỈ hiện khi user có ≥2 vai trò. Có 1 vai trò → vào thẳng màn tương ứng.
+        </div>
+        <div style="font-size:23px;font-weight:800;margin:6px 0 4px">Xin chào, Nguyễn Văn A!</div>
+        <div style="font-size:12.5px;color:var(--t2);margin-bottom:13px">Bạn có 3 vai trò — chọn vai trò muốn dùng</div>
+
+        <div class="card" style="display:flex;gap:12px;align-items:center">
+          <div style="width:46px;height:46px;background:var(--red);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">🏠</div>
+          <div style="flex:1"><div style="font-size:14.5px;font-weight:700">Hộ dân</div><div style="font-size:10.5px;color:var(--t2)">Gửi SOS, xác nhận an toàn cho gia đình</div></div>
+          <div style="font-size:20px;color:var(--t3)">›</div>
+        </div>
+        <div class="card" style="display:flex;gap:12px;align-items:center">
+          <div style="width:46px;height:46px;background:var(--blue);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">🏛️</div>
+          <div style="flex:1"><div style="font-size:14.5px;font-weight:700">Admin phụ — Trưởng thôn</div><div style="font-size:10.5px;color:var(--t2)">Điều phối cứu hộ trong thôn Pắc Liềng</div></div>
+          <div style="font-size:20px;color:var(--t3)">›</div>
+        </div>
+        <div class="card" style="display:flex;gap:12px;align-items:center">
+          <div style="width:46px;height:46px;background:var(--green);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0">⛑️</div>
+          <div style="flex:1"><div style="font-size:14.5px;font-weight:700">Đội Cứu hộ</div><div style="font-size:10.5px;color:var(--t2)">Dân quân thôn — nhận nhiệm vụ</div></div>
+          <div style="font-size:20px;color:var(--t3)">›</div>
+        </div>
+
+        <div class="card" style="background:var(--warn);border-color:var(--yellow)">
+          <div style="font-size:10.5px;font-weight:700;color:var(--orange);margin-bottom:3px">⚠️ Situation Board KHÔNG phải vai trò</div>
+          <div style="font-size:10px;color:var(--t2);line-height:1.5">Đó là trang công khai không cần đăng nhập — điểm vào ở màn Đăng nhập và mục Hồ sơ.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 04 HOME -->
+    <div class="scr" id="s04">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ban">⚠️ Không có mạng — 3 SOS đang chờ gửi</div>
+      <div class="ab"><span class="t">DisasterRescue</span><span class="r">🔔 3</span></div>
+      <div class="bd">
+        <div class="card rd" style="display:flex;gap:9px;align-items:center">
+          <span style="font-size:19px">🌊</span>
+          <div><div style="font-size:11.5px;font-weight:700;color:var(--red)">CẢNH BÁO LŨ LỤT — Thôn Pắc Liềng</div>
+          <div style="font-size:10px;color:var(--t2)">Mực nước sông dâng nhanh • 09:12 hôm nay</div></div>
+        </div>
+        <div class="mapx" style="height:96px">🗺️<span>Nhà tôi 📍 · Điểm sơ tán 🏫 · Đội cứu hộ ⛑️</span></div>
+
+        <div class="lb rd">NGUY HIỂM TỨC THÌ — TÍNH BẰNG PHÚT</div>
+        <div class="sos" style="height:172px"><span class="e">🆘</span><span class="n">S O S</span><span class="s">BẤM ĐỂ GỬI NGAY</span></div>
+
+        <div class="lb or">CÒN THỜI GIAN — TÍNH BẰNG GIỜ</div>
+        <div class="row" style="margin-bottom:8px">
+          <div class="tier" style="border-color:var(--orange);height:84px"><span class="e">🙋</span><span class="n" style="color:var(--orange)">Cần hỗ trợ sơ tán</span><span class="d">Xe chở, người khiêng</span></div>
+          <div class="tier" style="border-color:var(--green);height:84px"><span class="e">✓</span><span class="n" style="color:var(--green)">Tôi vẫn an toàn</span><span class="d">Báo cho xã yên tâm</span></div>
+        </div>
+
+        <div class="lb bl">VỀ NGƯỜI / NƠI KHÁC</div>
+        <div class="row">
+          <div class="tier" style="border-color:var(--blue);height:68px"><span class="e">👥</span><span class="n" style="color:var(--blue)">Báo giúp người khác</span></div>
+          <div class="tier" style="border-color:var(--blue);height:68px"><span class="e">📷</span><span class="n" style="color:var(--blue)">Báo tình hình khu vực</span></div>
+        </div>
+      </div>
+      <div class="bn"><div class="on"><i>🏠</i>Trang chủ</div><div><i>🔔</i>Thông báo</div><div><i>👤</i>Hồ sơ</div></div>
+    </div>
+
+    <!-- 05 SOS -->
+    <div class="scr" id="s05">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Gửi SOS</span><span style="font-size:11px;font-weight:600;color:var(--t2)">#DR-2025-0042</span></div>
+      <div class="ban">⚠️ Không có mạng — 3 SOS đang chờ gửi</div>
+      <div class="bd" style="background:#fff">
+        <div style="text-align:center;font-size:10px;font-weight:800;color:var(--t2);letter-spacing:.5px">VỊ TRÍ CỦA BẠN</div>
+        <div style="text-align:center;font-size:13px;font-weight:600;margin:4px 0 8px">21.5412° N, 107.3985° E</div>
+        <div style="text-align:center;margin-bottom:12px"><span class="chip" style="background:#FFF3E0;color:var(--orange);border:0">📍 Vị trí gần đúng — cập nhật 09:05</span></div>
+
+        <div class="sos" style="height:230px;margin-bottom:12px"><span class="e" style="font-size:50px">🆘</span>
+          <span style="font-size:20px;font-weight:900;text-align:center;padding:0 20px">SOS — BẤM ĐỂ GỬI NGAY</span>
+          <span style="font-size:12px">Không cần điền gì thêm</span></div>
+
+        <div class="card gr" style="text-align:center">
+          <div style="font-size:15px;font-weight:800;color:var(--green)">✓ SOS đã gửi</div>
+          <div style="font-size:10.5px;color:var(--gray);margin-top:3px">Mã SOS: #DR-2025-0042 • Đang chờ tiếp nhận</div>
+        </div>
+
+        <div class="card gy">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:8px"><span>Thêm thông tin (tùy chọn)</span><span>▾</span></div>
+          <div><span class="chip rd">🌊 Lũ lụt</span><span class="chip">⛰️ Sạt lở</span><span class="chip">🔥 Cháy rừng</span><span class="chip">🌀 Bão</span></div>
+          <div style="margin-top:4px"><span class="chip or">👶 Trẻ em</span><span class="chip or">👴 Người già</span><span class="chip">🤒 Người ốm</span><span class="chip">💊 Cần thuốc</span></div>
+          <div style="font-size:11.5px;font-weight:600;margin:9px 0 4px">Số người: 5</div>
+          <div class="bar"><i style="width:26%;background:var(--red)"></i></div>
+          <div class="row" style="margin-top:8px"><div class="btn gh" style="font-size:11px;padding:10px;margin:0">📷 Chụp ảnh</div><div class="btn gh" style="font-size:11px;padding:10px;margin:0">Mực nước: Ngực ▾</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 06 BAO TIN -->
+    <div class="scr" id="s06">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Báo tin cho xã</span></div>
+      <div style="background:#fff;padding:11px 15px;display:flex;align-items:center;gap:7px;border-bottom:1px solid #EEE">
+        <span style="width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">1</span>
+        <span style="font-size:11px;font-weight:700;color:var(--blue)">Loại tin</span>
+        <span style="width:26px;height:2px;background:var(--bd)"></span>
+        <span style="width:22px;height:22px;border-radius:50%;background:var(--bd);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">2</span>
+        <span style="font-size:11px;color:var(--t3)">Chi tiết</span>
+      </div>
+      <div class="bd" style="background:#fff">
+        <div class="card bl" style="font-size:10.5px;line-height:1.5"><b style="color:var(--blue)">ℹ️ Màn này dành cho việc của NGƯỜI KHÁC / NƠI KHÁC</b><br><span style="color:var(--t2)">Nhà bạn gặp nguy → dùng nút SOS. Cần xe sơ tán → dùng Cần hỗ trợ sơ tán.</span></div>
+
+        <div class="lb">BƯỚC 1 — CHỌN LOẠI TIN</div>
+        <div class="card or" style="display:flex;gap:11px;align-items:center;border-width:2px">
+          <div style="width:44px;height:44px;background:var(--orange);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">👥</div>
+          <div style="flex:1"><div style="font-size:14px;font-weight:700">Báo giúp người khác</div><div style="font-size:10px;color:var(--t2)">Hàng xóm, người thân đang gặp nạn → admin xác minh rồi tạo SOS</div></div>
+          <div style="font-size:15px;color:var(--orange)">●</div>
+        </div>
+        <div class="card" style="display:flex;gap:11px;align-items:center">
+          <div style="width:44px;height:44px;background:var(--blue);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">📷</div>
+          <div style="flex:1"><div style="font-size:14px;font-weight:700">Báo tình hình khu vực</div><div style="font-size:10px;color:var(--t2)">Đường sập, cây đổ, nước dâng, cầu hỏng → KHÔNG tạo SOS</div></div>
+          <div style="font-size:15px;color:var(--t3)">○</div>
+        </div>
+
+        <div class="lb">BƯỚC 2 — CHI TIẾT (LUỒNG B)</div>
+        <div class="mapx" style="height:92px">📍<span>Bấm chọn vị trí NGƯỜI CẦN CỨU</span></div>
+        <div class="fld" style="margin-top:9px"><span class="ph">Hoặc nhập địa chỉ: nhà bác Tư, cạnh cây gạo</span></div>
+        <div class="card"><div style="font-size:9px;font-weight:800;color:var(--t3);margin-bottom:4px">MÔ TẢ TÌNH HUỐNG</div>
+          <div style="font-size:11.5px;line-height:1.5">Hàng xóm đang bị ngập tầng 1, nhà có 2 trẻ nhỏ và 1 cụ già.</div></div>
+        <div class="row" style="margin-bottom:9px"><div class="mapx" style="height:56px">🖼️</div><div class="mapx" style="height:56px">🖼️</div><div class="mapx" style="height:56px">📷 ＋</div></div>
+
+        <div class="card or">
+          <div style="font-size:11.5px;font-weight:700;color:var(--orange)">Mức tin cậy tự tính: 35/100</div>
+          <div class="bar" style="background:#FFE0B2"><i style="width:35%;background:var(--orange)"></i></div>
+          <div style="font-size:9.5px;color:var(--t2)">+ ảnh (+20) · GPS cách 320m (+15) · chưa có người báo trùng</div>
+        </div>
+        <div class="btn o">GỬI BÁO TIN</div>
+      </div>
+    </div>
+
+    <!-- 06b ASSISTANCE -->
+    <div class="scr" id="s06b">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Cần hỗ trợ sơ tán</span></div>
+      <div class="bd" style="background:#fff">
+        <div class="card or">
+          <div style="font-size:11px;font-weight:800;color:var(--orange);margin-bottom:4px">⚠️ ĐÂY KHÔNG PHẢI SOS</div>
+          <div style="font-size:10.5px;color:var(--t2);line-height:1.5">Yêu cầu này dành cho tình huống còn thời gian (tính bằng giờ). Nếu nhà bạn đang nguy hiểm NGAY BÂY GIỜ → quay lại bấm nút SOS đỏ.</div>
+        </div>
+
+        <div class="lb">CẦN HỖ TRỢ GÌ?</div>
+        <div><span class="chip or">🚗 Xe chở người</span><span class="chip">💪 Người khiêng đồ</span><span class="chip or">💊 Thuốc men</span><span class="chip">🔨 Gia cố nhà</span><span class="chip">🍚 Lương thực</span></div>
+
+        <div class="lb">AI CẦN HỖ TRỢ? (LẤY TỪ HỒ SƠ HỘ)</div>
+        <div class="card gy">
+          <div style="font-size:13px;font-weight:700;margin-bottom:7px">Hộ Nguyễn Văn A — Thôn Pắc Liềng</div>
+          <div><span class="chip gy">👥 5 người</span><span class="chip gy">👴 Cụ ông 85t liệt giường</span><span class="chip gy">👶 2 trẻ em</span><span class="chip">♿ Khuyết tật</span></div>
+        </div>
+
+        <div class="lb">KHI NÀO CẦN?</div>
+        <div style="display:flex;background:#EEE;border-radius:8px;padding:4px;gap:4px;margin-bottom:9px">
+          <div style="flex:1;text-align:center;padding:8px;font-size:11.5px;font-weight:600;color:var(--t2)">Trong 1h</div>
+          <div style="flex:1;text-align:center;padding:8px;font-size:11.5px;font-weight:700;background:var(--orange);color:#fff;border-radius:6px">Trong 3h</div>
+          <div style="flex:1;text-align:center;padding:8px;font-size:11.5px;font-weight:600;color:var(--t2)">Trước tối nay</div>
+        </div>
+
+        <div class="lb">ĐIỂM SƠ TÁN MUỐN ĐẾN</div>
+        <div class="fld"><span>🏫 Trường TH Bình Liêu — còn 155 chỗ</span><span>▾</span></div>
+
+        <div class="card">
+          <div style="font-size:9px;font-weight:800;color:var(--t3);margin-bottom:4px">GHI CHÚ THÊM</div>
+          <div style="font-size:12px;line-height:1.5">Cụ ông không tự đi được, cần cáng hoặc xe có chỗ nằm. Đường vào nhà xe máy đi được.</div>
+        </div>
+
+        <div class="card bl" style="font-size:10.5px;line-height:1.5">
+          <b style="color:var(--blue)">🕐 Xã sẽ phản hồi trong vòng 3 giờ</b><br>
+          <span style="color:var(--t2)">Tạo AssistanceRequest — hàng đợi riêng, không lẫn vào hàng đợi SOS đỏ.</span>
+        </div>
+        <div class="btn o">GỬI YÊU CẦU HỖ TRỢ</div>
+      </div>
+    </div>
+
+    <!-- 07 SAFETY MODAL -->
+    <div class="scr" id="s07">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div style="flex:1;position:relative;background:var(--bg)">
+        <div class="dim">
+          <div style="background:#fff;border-radius:8px;padding:10px 11px">
+            <div style="font-size:9.5px;font-weight:800;color:var(--blue);margin-bottom:3px">⚙️ ĐIỀU KIỆN KÍCH HOẠT — CẢ 3 PHẢI ĐÚNG</div>
+            <div style="font-size:9px;color:var(--t2);line-height:1.5">1. Có thiên tai đang diễn ra phủ khu vực hộ &nbsp; 2. Hộ chưa gửi SOS &nbsp; 3. Chưa xác nhận &gt; 2 giờ</div>
+          </div>
+
+          <div style="background:#fff;border-radius:15px;padding:22px;text-align:center">
+            <div style="font-size:38px">❓</div>
+            <div style="font-size:20px;font-weight:800;margin:8px 0 5px">Bạn có an toàn không?</div>
+            <div style="font-size:11px;color:var(--t2);margin-bottom:14px">Đây là lần hỏi thứ 2/3 — không phản hồi lần 3 sẽ báo admin</div>
+            <div class="btn g" style="padding:16px">✓ TÔI AN TOÀN</div>
+            <div class="btn p" style="padding:16px;margin-bottom:0">🆘 TÔI CẦN GIÚP</div>
+            <div style="font-size:9.5px;color:var(--t3);margin-top:9px">Không có nút đóng — bắt buộc trả lời</div>
+          </div>
+
+          <div style="background:#fff;border-radius:8px;padding:10px 11px">
+            <div style="font-size:9.5px;font-weight:800;color:var(--green);margin-bottom:6px">🔁 NẾU ĐIỆN THOẠI MẤT / HẾT PIN — 4 NGUỒN THAY THẾ</div>
+            <table class="tbl">
+              <tr><td>⛑️ Đội cứu hộ xác nhận tại hiện trường</td><td style="color:var(--green)">100</td></tr>
+              <tr><td>🏫 Check-in tại điểm sơ tán</td><td style="color:var(--green)">95</td></tr>
+              <tr><td>🏛️ Trưởng thôn xác nhận thủ công</td><td style="color:var(--green)">70</td></tr>
+              <tr><td>👥 Hàng xóm báo hộ (qua luồng B)</td><td style="color:var(--green)">40</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 08 NOTIFICATIONS -->
+    <div class="scr" id="s08">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">Thông báo</span><span class="r">3 chưa đọc</span></div>
+      <div style="background:#fff;padding:9px 13px;border-bottom:1px solid var(--bd)">
+        <span class="chip rd">Tất cả</span><span class="chip">Cảnh báo</span><span class="chip">SOS</span><span class="chip">Sơ tán</span><span class="chip">Kho</span>
+      </div>
+      <div class="bd">
+        <div class="card" style="background:#E3F2FD;display:flex;gap:9px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">🌊</div>
+          <div><div style="font-size:12.5px;font-weight:700">CẢNH BÁO LŨ LỤT cấp 2</div>
+          <div style="font-size:10.5px;color:var(--gray)">Mực nước sông Tiên Yên dâng nhanh. Chuẩn bị sơ tán.</div>
+          <div style="font-size:9.5px;color:var(--t3);margin-top:2px">09:12 — Hôm nay</div></div>
+        </div>
+        <div class="card" style="background:#E3F2FD;display:flex;gap:9px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">🏫</div>
+          <div><div style="font-size:12.5px;font-weight:700">LỆNH SƠ TÁN — Thôn Pắc Liềng</div>
+          <div style="font-size:10.5px;color:var(--gray)">Di chuyển đến Trường TH Bình Liêu ngay.</div>
+          <div style="font-size:9.5px;color:var(--t3);margin-top:2px">09:30 — Hôm nay</div></div>
+        </div>
+        <div class="card" style="background:#E3F2FD;display:flex;gap:9px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">⛑️</div>
+          <div><div style="font-size:12.5px;font-weight:700">Đội cứu hộ đang đến</div>
+          <div style="font-size:10.5px;color:var(--gray)">Đội Dân quân Thôn 1 đã nhận SOS #DR-2025-0042</div>
+          <div style="font-size:9.5px;color:var(--t3);margin-top:2px">09:45 — Hôm nay</div></div>
+        </div>
+        <div class="card" style="display:flex;gap:9px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">📦</div>
+          <div><div style="font-size:12.5px;font-weight:700">Phát hàng cứu trợ</div>
+          <div style="font-size:10.5px;color:var(--gray)">Nhận 2 thùng nước + 1 chăn tại điểm sơ tán.</div>
+          <div style="font-size:9.5px;color:var(--t3);margin-top:2px">16:20 — Hôm qua</div></div>
+        </div>
+        <div class="card" style="display:flex;gap:9px">
+          <div style="width:34px;height:34px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">✅</div>
+          <div><div style="font-size:12.5px;font-weight:700">Xác nhận an toàn đã ghi nhận</div>
+          <div style="font-size:10.5px;color:var(--gray)">Cảm ơn bạn đã phản hồi.</div>
+          <div style="font-size:9.5px;color:var(--t3);margin-top:2px">14:20 — Hôm qua</div></div>
+        </div>
+      </div>
+      <div class="bn"><div><i>🏠</i>Trang chủ</div><div class="on"><i>🔔</i>Thông báo</div><div><i>👤</i>Hồ sơ</div></div>
+    </div>
+
+    <!-- 09 REGISTER HOUSEHOLD -->
+    <div class="scr" id="s09">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Thông tin hộ gia đình</span></div>
+      <div class="bd">
+        <div class="lb rd">1. THÔNG TIN CHÍNH</div>
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Họ tên chủ hộ *</div>
+        <div class="fld">Nguyễn Văn A</div>
+        <div class="row" style="margin-bottom:9px">
+          <div><div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Số điện thoại *</div><div class="fld" style="margin:0">0987654321</div></div>
+          <div><div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Số thành viên *</div><div class="fld" style="margin:0">5</div></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Thôn/xóm *</div>
+        <div class="fld"><span>Thôn Pắc Liềng</span><span>▾</span></div>
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Loại nhà</div>
+        <div style="display:flex;background:#EEE;border-radius:8px;padding:4px;gap:4px;margin-bottom:9px">
+          <div style="flex:1;text-align:center;padding:9px;font-size:12px;font-weight:700;background:var(--red);color:#fff;border-radius:6px">Cấp 4</div>
+          <div style="flex:1;text-align:center;padding:9px;font-size:12px;color:var(--t2)">Nhiều tầng</div>
+        </div>
+
+        <div class="lb rd">2. NGƯỜI DỄ BỊ TỔN THƯƠNG</div>
+        <div><span class="chip or">👶 Trẻ em</span><span class="chip or">👴 Người già</span><span class="chip">♿ Khuyết tật</span><span class="chip">🤰 Mang thai</span><span class="chip">🤒 Ốm nặng</span></div>
+
+        <div class="lb rd">3. VỊ TRÍ NHÀ</div>
+        <div class="mapx" style="height:100px">📍<span>Bấm để chọn vị trí trên bản đồ</span></div>
+        <div style="font-size:10.5px;color:var(--t2);margin:6px 0 9px">Đã chọn: 21.5412° N, 107.3985° E</div>
+        <div class="btn ghb" style="font-size:12px">📡 Dùng vị trí GPS hiện tại</div>
+        <div class="btn p">ĐĂNG KÝ</div>
+      </div>
+    </div>
+
+    <!-- 24 NOTIFICATION DETAIL -->
+    <div class="scr" id="s24">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Chi tiết thông báo</span><span class="r">Đánh dấu đã đọc</span></div>
+      <div class="bd">
+        <div class="card or" style="border-width:2px">
+          <div style="display:flex;gap:9px;align-items:center;margin-bottom:8px">
+            <div style="width:40px;height:40px;border-radius:50%;background:var(--orange);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🏫</div>
+            <div style="flex:1"><div style="font-size:15px;font-weight:800;color:var(--orange)">LỆNH SƠ TÁN</div>
+            <div style="font-size:9.5px;color:var(--t2)">Thôn Pắc Liềng · 09:30 hôm nay · UBND xã Bình Liêu</div></div>
+            <span style="background:var(--red);color:#fff;font-size:9.5px;font-weight:700;padding:4px 8px;border-radius:5px">KHẨN</span>
+          </div>
+          <div style="font-size:12px;line-height:1.55">KHẨN: Lệnh sơ tán thôn Pắc Liềng. Toàn bộ hộ dân di chuyển ngay đến Trường TH Bình Liêu. Mang theo giấy tờ, thuốc men. Liên hệ 0203.123.456 nếu cần hỗ trợ di chuyển.</div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:var(--blue)"><span>🗣 Bản Tiếng Tày</span><span>▾</span></div>
+          <div style="font-size:11.5px;color:var(--gray);margin-top:5px;line-height:1.5">Khẩn: Slống bản Pắc Liềng pây d'ú Trường TH Bình Liêu. Au giấy tờ, dà slử pây nèm.</div>
+        </div>
+
+        <div class="lb">ĐIỂM SƠ TÁN ĐÍCH</div>
+        <div class="mapx" style="height:120px;position:relative">
+          <div style="position:absolute;left:0;top:62px;width:100%;height:5px;background:#fff;opacity:.8"></div>
+          <div style="position:absolute;left:50px;top:48px;width:180px;height:4px;background:var(--blue);transform:rotate(-10deg)"></div>
+          <div class="pin" style="background:var(--blue);left:32px;top:66px;border-width:3px">🏠</div>
+          <div class="pin" style="background:var(--green);left:240px;top:22px;width:34px;height:34px;border-width:3px">🏫</div>
+          <div style="position:absolute;left:9px;top:9px;background:#fff;border-radius:6px;padding:5px 9px;font-size:10px;font-weight:700">🧭 1.2km · ~18 phút đi bộ</div>
+        </div>
+
+        <div class="card gr" style="display:flex;gap:8px;align-items:center;margin-top:9px">
+          <span style="font-size:15px">🏫</span>
+          <div><div style="font-size:12px;font-weight:700">Trường TH Bình Liêu</div>
+          <div style="font-size:10px;color:var(--gray)">Còn 155/200 chỗ · Có chăn, nước, lương khô</div></div>
+        </div>
+
+        <div class="lb">CẦN MANG THEO</div>
+        <div><span class="chip">📄 Giấy tờ tuỳ thân</span><span class="chip">💊 Thuốc đang dùng</span><span class="chip">🔦 Đèn pin</span><span class="chip">🔌 Sạc dự phòng</span><span class="chip">👕 Quần áo khô</span></div>
+
+        <div class="btn g" style="margin-top:10px">✓ TÔI ĐÃ ĐẾN ĐIỂM SƠ TÁN</div>
+        <div class="btn ghr" style="font-size:12.5px">🆘 Không thể sơ tán — cần hỗ trợ</div>
+      </div>
+    </div>
+
+    <!-- 10 ADMIN MAP -->
+    <div class="scr" id="s10">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div style="flex:1;background:var(--map);position:relative;overflow:hidden">
+        <div style="position:absolute;left:0;top:180px;width:100%;height:7px;background:#fff;opacity:.75"></div>
+        <div style="position:absolute;left:0;top:380px;width:100%;height:7px;background:#fff;opacity:.75"></div>
+        <div style="position:absolute;left:110px;top:0;width:7px;height:100%;background:#fff;opacity:.75"></div>
+        <div style="position:absolute;left:250px;top:0;width:7px;height:100%;background:#fff;opacity:.75"></div>
+        <div style="position:absolute;left:26px;top:216px;width:180px;height:160px;border-radius:50%;background:rgba(211,47,47,.16);border:2px dashed var(--red)"></div>
+
+        <div class="pin" style="background:var(--red);left:52px;top:262px">🆘</div>
+        <div class="pin" style="background:var(--red);left:126px;top:312px">🆘</div>
+        <div class="pin" style="background:var(--orange);left:86px;top:352px">🆘</div>
+        <div class="pin" style="background:var(--yellow);left:196px;top:248px">🆘</div>
+        <div class="pin" style="background:var(--green);left:164px;top:150px">⛑️</div>
+        <div class="pin" style="background:var(--green);left:268px;top:292px">⛑️</div>
+        <div class="pin" style="background:var(--green);left:216px;top:120px">🏫</div>
+
+        <div class="kpi" style="position:absolute;left:10px;top:10px;right:10px">
+          <div><div class="n" style="color:var(--red)">12</div><div class="l">SOS chờ</div><div class="bar" style="height:4px"><i style="width:80%;background:var(--red);opacity:.4"></i></div></div>
+          <div><div class="n" style="color:var(--orange)">5</div><div class="l">Đang cứu</div><div class="bar" style="height:4px"><i style="width:40%;background:var(--orange);opacity:.4"></i></div></div>
+          <div><div class="n" style="color:var(--green)">23</div><div class="l">Đã cứu</div><div class="bar" style="height:4px"><i style="width:70%;background:var(--green);opacity:.4"></i></div></div>
+          <div><div class="n" style="color:var(--gray)">8</div><div class="l">Mất LL</div><div class="bar" style="height:4px"><i style="width:30%;background:var(--gray);opacity:.4"></i></div></div>
+        </div>
+        <div style="position:absolute;left:10px;top:96px;background:#fff;border-radius:50px;padding:7px 12px;font-size:11.5px;font-weight:700;box-shadow:0 2px 6px rgba(0,0,0,.15)">✓ 280/480 hộ an toàn</div>
+
+        <div style="position:absolute;right:10px;top:280px;display:flex;flex-direction:column;gap:7px;align-items:flex-end">
+          <div style="background:#fff;border-radius:50px;padding:8px 12px;font-size:11.5px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.18)">🆘 Tạo SOS thay</div>
+          <div style="background:#fff;border-radius:50px;padding:8px 12px;font-size:11.5px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.18);display:flex;gap:6px;align-items:center">✔️ Duyệt báo cáo <span style="background:var(--red);color:#fff;border-radius:50%;width:17px;height:17px;display:flex;align-items:center;justify-content:center;font-size:9px">4</span></div>
+          <div style="background:#fff;border-radius:50px;padding:8px 12px;font-size:11.5px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.18)">🏫 Phát lệnh sơ tán</div>
+          <div style="background:#fff;border-radius:50px;padding:8px 12px;font-size:11.5px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.18)">📢 Leo thang</div>
+          <div style="background:#fff;border-radius:50px;padding:8px 12px;font-size:11.5px;font-weight:600;box-shadow:0 2px 6px rgba(0,0,0,.18)">📥 Import dân cư</div>
+        </div>
+        <div style="position:absolute;right:14px;bottom:14px;width:52px;height:52px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700;box-shadow:0 3px 10px rgba(0,0,0,.3)">✕</div>
+        <div style="position:absolute;left:10px;bottom:14px;background:#fff;border-radius:8px;padding:8px 11px;font-size:10.5px;font-weight:600">⚏ Lớp bản đồ</div>
+      </div>
+      <div class="bn"><div class="on"><i>🗺️</i>Bản đồ</div><div><i>📋</i>Đối chiếu</div><div><i>⛑️</i>Lực lượng</div><div><i>📦</i>Kho</div><div><i>📖</i>Nhật ký</div></div>
+    </div>
+
+    <!-- 11 IMPORT -->
+    <div class="scr" id="s11">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Import Danh sách Hộ dân</span></div>
+      <div class="bd">
+        <div class="card bl" style="font-size:10.5px;line-height:1.5"><b style="color:var(--blue)">📅 CÔNG TÁC CHUẨN BỊ — làm trước mùa thiên tai</b><br><span style="color:var(--t2)">Khuyến nghị dùng bản web để import số lượng lớn. Bản mobile dùng khi cần bổ sung gấp ngoài thực địa.</span></div>
+
+        <div class="lb">CHỌN NGUỒN FILE</div>
+        <div class="card" style="display:flex;gap:11px;align-items:center">
+          <div style="width:38px;height:38px;background:var(--bg);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">📁</div>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Chọn file từ máy</div><div style="font-size:10px;color:var(--t2)">Từ bộ nhớ trong / thẻ nhớ — .xlsx, .csv</div></div>
+          <span style="color:var(--t3);font-size:17px">›</span>
+        </div>
+        <div class="card" style="display:flex;gap:11px;align-items:center">
+          <div style="width:38px;height:38px;background:var(--bg);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">💬</div>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Nhận file từ Zalo / Email</div><div style="font-size:10px;color:var(--t2)">Mở file đính kèm đã tải về</div></div>
+          <span style="color:var(--t3);font-size:17px">›</span>
+        </div>
+        <div class="card" style="display:flex;gap:11px;align-items:center">
+          <div style="width:38px;height:38px;background:var(--bg);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">☁️</div>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Từ link Google Sheet</div><div style="font-size:10px;color:var(--t2)">Dán link chia sẻ công khai</div></div>
+          <span style="color:var(--t3);font-size:17px">›</span>
+        </div>
+
+        <div class="row" style="margin-bottom:9px"><div class="btn ghb" style="font-size:10.5px;padding:10px;margin:0">📧 Gửi file mẫu về email</div><div class="btn gh" style="font-size:10.5px;padding:10px;margin:0">👁 Xem cấu trúc 12 cột</div></div>
+        <div class="btn ghr" style="font-size:12.5px">✎ Nhập thủ công từng hộ</div>
+
+        <div class="lb">PREVIEW — ho_dan_binh_lieu.xlsx</div>
+        <div class="row" style="margin-bottom:9px">
+          <div class="card" style="margin:0;text-align:left"><div style="font-size:19px;font-weight:800;color:var(--blue)">120</div><div style="font-size:9.5px;color:var(--t2)">Tổng hộ</div></div>
+          <div class="card" style="margin:0"><div style="font-size:19px;font-weight:800;color:var(--green)">450</div><div style="font-size:9.5px;color:var(--t2)">Nhân khẩu</div></div>
+          <div class="card" style="margin:0"><div style="font-size:19px;font-weight:800;color:var(--orange)">35</div><div style="font-size:9.5px;color:var(--t2)">Người yếu thế</div></div>
+        </div>
+        <div class="card or" style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11.5px;font-weight:700;color:var(--orange)">⚠️ 3 SĐT bị trùng</span>
+          <span style="font-size:11px;font-weight:700;color:var(--orange)">Xử lý →</span>
+        </div>
+        <div class="row"><div class="btn gh" style="margin:0">Bỏ qua</div><div class="btn p" style="margin:0">Xác nhận Import</div></div>
+      </div>
+      <div class="bn"><div class="on"><i>🗺️</i>Bản đồ</div><div><i>📋</i>Đối chiếu</div><div><i>⛑️</i>Lực lượng</div><div><i>📦</i>Kho</div><div><i>📖</i>Nhật ký</div></div>
+    </div>
+
+    <!-- 12 HOUSEHOLD RECONCILE -->
+    <div class="scr" id="s12">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">Đối chiếu Hộ dân</span><span class="r">480 hộ</span></div>
+      <div style="background:#fff;padding:9px 13px;display:flex;gap:7px;border-bottom:1px solid #EEE">
+        <div style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 9px"><div style="font-size:10.5px;font-weight:700">Thôn Pắc Liềng</div><div style="font-size:9.5px;color:var(--t2)">45 hộ</div><div style="font-size:9.5px;font-weight:700;color:var(--red)">Mất LL: 8</div></div>
+        <div style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 9px"><div style="font-size:10.5px;font-weight:700">Thôn Nà Lầu</div><div style="font-size:9.5px;color:var(--t2)">62 hộ</div><div style="font-size:9.5px;font-weight:700;color:var(--red)">Mất LL: 5</div></div>
+        <div style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 9px"><div style="font-size:10.5px;font-weight:700">Thôn Khe Tiền</div><div style="font-size:9.5px;color:var(--t2)">38 hộ</div><div style="font-size:9.5px;font-weight:700;color:var(--red)">Mất LL: 2</div></div>
+      </div>
+      <div style="background:#fff;padding:9px 13px"><span class="chip on">Tất cả</span><span class="chip">An toàn</span><span class="chip">SOS</span><span class="chip">Mất liên lạc</span><span class="chip">Đang cứu</span></div>
+      <div style="background:var(--bg);padding:7px 13px;display:flex;justify-content:space-between;font-size:10.5px"><span style="font-weight:600;color:var(--gray)">Sắp xếp: Mất liên lạc giảm dần ▾</span><span style="color:var(--t2)">15 kết quả</span></div>
+      <div class="bd">
+        <div class="card"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:700">Nguyễn Văn A</span><span style="font-size:10.5px;color:var(--t2)">Thôn Pắc Liềng</span></div>
+          <div style="font-size:10.5px;color:var(--gray);margin:5px 0">👨‍👩‍👧 5 người &nbsp; 🏚️ Cấp 4 &nbsp; 👴 Người già</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip gy">Mất liên lạc — 4h</span><span style="font-size:9.5px;color:var(--t3)">10:30 hôm qua</span></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:700">Trần Thị B</span><span style="font-size:10.5px;color:var(--t2)">Thôn Nà Lầu</span></div>
+          <div style="font-size:10.5px;color:var(--gray);margin:5px 0">👨‍👩‍👧 3 người &nbsp; 🏚️ Cấp 4 &nbsp; 👶 Trẻ em</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip rd">SOS — Chờ xử lý</span><span style="font-size:9.5px;color:var(--t3)">09:12 hôm nay</span></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:700">Lý Văn C</span><span style="font-size:10.5px;color:var(--t2)">Thôn Pắc Liềng</span></div>
+          <div style="font-size:10.5px;color:var(--gray);margin:5px 0">👨‍👩‍👧 7 người &nbsp; 🏚️ Nhiều tầng &nbsp; ♿ Khuyết tật</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip bl">Đang cứu</span><span style="font-size:9.5px;color:var(--t3)">09:45 hôm nay</span></div></div>
+        <div class="card"><div style="display:flex;justify-content:space-between"><span style="font-size:13.5px;font-weight:700">Hoàng Thị D</span><span style="font-size:10.5px;color:var(--t2)">Thôn Khe Tiền</span></div>
+          <div style="font-size:10.5px;color:var(--gray);margin:5px 0">👨‍👩‍👧 2 người &nbsp; 🏚️ Cấp 4 &nbsp; 🤰 Mang thai</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip gr">⛑️ An toàn — đội xác nhận</span><span style="font-size:9.5px;color:var(--t3)">09:50 hôm nay</span></div></div>
+      </div>
+      <div class="bn"><div><i>🗺️</i>Bản đồ</div><div class="on"><i>📋</i>Đối chiếu</div><div><i>⛑️</i>Lực lượng</div><div><i>📦</i>Kho</div><div><i>📖</i>Nhật ký</div></div>
+    </div>
+
+    <!-- 13 TEAMS -->
+    <div class="scr" id="s13">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">Lực lượng Cứu hộ</span><span class="r">12 đội</span></div>
+      <div class="tabs"><div class="on">Thường trực</div><div>Vãng lai</div><div>Chờ duyệt 4</div><div>Kết thúc</div></div>
+      <div style="background:#fff;padding:9px 13px"><span class="chip gr">Sẵn sàng 2</span><span class="chip bl">Đang nhiệm vụ 6</span><span class="chip or">Tạm nghỉ 2</span><span class="chip gy">Mất kết nối 1</span></div>
+      <div class="bd">
+        <div class="card bl" style="font-size:10.5px;line-height:1.5"><b style="color:var(--blue)">🏛️ 5 đội thường trực — biên chế xã, đã kích hoạt</b><br><span style="color:var(--t2)">Không cần đăng ký lại mỗi đợt. Vật tư biên chế được tính vào tổng vật tư khả dụng của xã.</span></div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;font-weight:700">Đội Dân quân Thôn Pắc Liềng</span><span class="chip bl" style="margin:0">THƯỜNG TRỰC</span></div>
+          <div style="font-size:10.5px;color:var(--gray);margin:5px 0">👥 8 người · 2 thuyền</div>
+          <div style="font-size:10px;font-weight:600;color:var(--green);margin-bottom:6px">📦 Biên chế: 10 áo phao, 4 đèn pin</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip bl">Đang nhiệm vụ</span><span style="font-size:10px;font-weight:700;color:var(--blue)">Xem chi tiết ›</span></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;font-weight:700">Tổ Xung kích Nà Lầu</span><span class="chip bl" style="margin:0">THƯỜNG TRỰC</span></div>
+          <div style="font-size:10.5px;color:var(--gray);margin:5px 0">👥 6 người · 1 thuyền</div>
+          <div style="font-size:10px;font-weight:600;color:var(--green);margin-bottom:6px">📦 Biên chế: 6 áo phao, 1 máy phát</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip or">Tạm nghỉ</span><span style="font-size:10px;color:var(--t2)">Quay lại 14:00 — hồi sức</span></div>
+        </div>
+
+        <div class="card" style="border-color:var(--gray);border-width:2px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;font-weight:700">Đội Y tế xã Bình Liêu</span><span class="chip bl" style="margin:0">THƯỜNG TRỰC</span></div>
+          <div style="font-size:10.5px;color:var(--gray);margin:5px 0">👥 4 người · 1 xe cứu thương</div>
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip gy">Mất kết nối</span><span style="font-size:10px;color:var(--t2)">Im lặng 42 phút</span></div>
+        </div>
+
+        <div class="card gy">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;font-weight:700">Hội Chữ thập đỏ Hạ Long</span><span class="chip or" style="margin:0">VÃNG LAI</span></div>
+          <div style="font-size:10.5px;color:var(--gray);margin:5px 0">👥 15 người · 2 xe tải · đã duyệt 10:05</div>
+          <div style="font-size:10px;font-weight:600;color:var(--orange)">📦 Mang theo: 50 thùng mì, 200 chai nước</div>
+        </div>
+      </div>
+      <div class="bn"><div><i>🗺️</i>Bản đồ</div><div><i>📋</i>Đối chiếu</div><div class="on"><i>⛑️</i>Lực lượng</div><div><i>📦</i>Kho</div><div><i>📖</i>Nhật ký</div></div>
+    </div>
+
+    <!-- 14 REVIEW REPORTS -->
+    <div class="scr" id="s14">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Báo cáo Cần Xác Minh</span><span class="r">4 chờ</span></div>
+      <div class="bd">
+        <div class="card bl" style="font-size:10.5px;font-weight:600;color:var(--blue)">🔗 Nhiều người báo cùng khu vực (3 báo cáo trong 200m / 30 phút)</div>
+
+        <div class="card">
+          <div style="display:flex;gap:9px"><div class="mapx" style="width:58px;height:58px;flex-shrink:0;font-size:22px">🌊</div>
+            <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Lũ lụt — Thôn Nà Lầu</div>
+            <div style="font-size:10.5px;color:var(--gray)">"Hàng xóm đang bị ngập tầng 1, có 2 trẻ nhỏ"</div>
+            <div style="font-size:9.5px;color:var(--t3);margin-top:2px">📍 320m từ hiện trường · ⏱ 14:20</div></div></div>
+          <div style="font-size:11px;font-weight:700;color:var(--green);margin:8px 0 3px">Độ tin cậy: 80/100</div>
+          <div class="bar"><i style="width:80%;background:var(--green)"></i></div>
+          <div class="row" style="margin-top:8px"><div class="btn ghr" style="font-size:11px;padding:9px;margin:0">Từ chối</div><div class="btn p" style="font-size:11px;padding:9px;margin:0">Duyệt → tạo SOS</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:9px"><div class="mapx" style="width:58px;height:58px;flex-shrink:0;font-size:22px">⛰️</div>
+            <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Sạt lở — Thôn Khe Tiền</div>
+            <div style="font-size:10.5px;color:var(--gray)">"Đất đá tràn xuống sau nhà bác Tư"</div>
+            <div style="font-size:9.5px;color:var(--t3);margin-top:2px">📍 1.2km từ hiện trường · ⏱ 14:05</div></div></div>
+          <div style="font-size:11px;font-weight:700;color:var(--orange);margin:8px 0 3px">Độ tin cậy: 55/100</div>
+          <div class="bar"><i style="width:55%;background:var(--orange)"></i></div>
+          <div class="row" style="margin-top:8px"><div class="btn ghr" style="font-size:11px;padding:9px;margin:0">Từ chối</div><div class="btn p" style="font-size:11px;padding:9px;margin:0">Duyệt → tạo SOS</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:9px"><div class="mapx" style="width:58px;height:58px;flex-shrink:0;font-size:22px">🔥</div>
+            <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Cháy rừng — Đồi Cao Ba Lanh</div>
+            <div style="font-size:10.5px;color:var(--gray)">"Thấy khói lớn phía đồi, chưa rõ vị trí"</div>
+            <div style="font-size:9.5px;color:var(--t3);margin-top:2px">📍 5.4km từ hiện trường · ⏱ 13:40</div></div></div>
+          <div style="font-size:11px;font-weight:700;color:var(--red);margin:8px 0 3px">Độ tin cậy: 30/100</div>
+          <div class="bar"><i style="width:30%;background:var(--red)"></i></div>
+        </div>
+      </div>
+      <div class="bn"><div class="on"><i>🗺️</i>Bản đồ</div><div><i>📋</i>Đối chiếu</div><div><i>⛑️</i>Lực lượng</div><div><i>📦</i>Kho</div><div><i>📖</i>Nhật ký</div></div>
+    </div>
+
+    <!-- 15 EVACUATION POINTS -->
+    <div class="scr" id="s15">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">Điểm Sơ Tán</span><span class="r">+ Thêm</span></div>
+      <div style="height:170px;background:var(--map);position:relative;flex-shrink:0">
+        <div style="position:absolute;left:0;top:82px;width:100%;height:6px;background:#fff;opacity:.75"></div>
+        <div style="position:absolute;left:160px;top:0;width:6px;height:100%;background:#fff;opacity:.75"></div>
+        <div class="pin" style="background:var(--green);left:52px;top:42px">🏫</div>
+        <div class="pin" style="background:var(--orange);left:196px;top:108px">🏫</div>
+        <div class="pin" style="background:var(--red);left:280px;top:38px">🏫</div>
+        <div class="pin" style="background:var(--gray);left:110px;top:126px">🏫</div>
+      </div>
+      <div class="bd">
+        <div class="card">
+          <div style="font-size:13.5px;font-weight:700">🏠 Trường TH Bình Liêu</div>
+          <div style="font-size:12px;font-weight:600;color:var(--green);margin:5px 0">Sức chứa: 45/200 người</div>
+          <div class="bar"><i style="width:23%;background:var(--green)"></i></div>
+          <div style="font-size:10px;color:var(--t2)">Vật tư: Chăn, Nước, Lương khô</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px"><span class="chip gr">Còn chỗ</span><span style="font-size:10px;font-weight:700;color:var(--blue)">Cập nhật tình trạng →</span></div>
+        </div>
+        <div class="card">
+          <div style="font-size:13.5px;font-weight:700">🏠 Nhà văn hóa Thôn Pắc Liềng</div>
+          <div style="font-size:12px;font-weight:600;color:var(--orange);margin:5px 0">Sức chứa: 118/120 người</div>
+          <div class="bar"><i style="width:98%;background:var(--orange)"></i></div>
+          <div style="font-size:10px;color:var(--t2)">Vật tư: Nước, Thuốc</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px"><span class="chip or">Sắp đầy</span><span style="font-size:10px;font-weight:700;color:var(--blue)">Cập nhật tình trạng →</span></div>
+        </div>
+        <div class="card">
+          <div style="font-size:13.5px;font-weight:700">🏠 UBND xã Bình Liêu</div>
+          <div style="font-size:12px;font-weight:600;color:var(--red);margin:5px 0">Sức chứa: 150/150 người</div>
+          <div class="bar"><i style="width:100%;background:var(--red)"></i></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px"><span class="chip rd">Đã đầy</span><span style="font-size:10px;font-weight:700;color:var(--blue)">Cập nhật tình trạng →</span></div>
+        </div>
+        <div class="card gy">
+          <div style="font-size:13.5px;font-weight:700">🏠 Trạm Y tế Khe Tiền</div>
+          <div style="font-size:12px;font-weight:600;color:var(--gray);margin:5px 0">Sức chứa: 0/60 người</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px"><span class="chip gy">Hỏng — ngập</span></div>
+        </div>
+      </div>
+      <div class="bn"><div class="on"><i>🗺️</i>Bản đồ</div><div><i>📋</i>Đối chiếu</div><div><i>⛑️</i>Lực lượng</div><div><i>📦</i>Kho</div><div><i>📖</i>Nhật ký</div></div>
+    </div>
+
+    <!-- 16 EVACUATION ORDER -->
+    <div class="scr" id="s16">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Phát Lệnh Sơ Tán</span></div>
+      <div class="bd">
+        <div class="lb rd">BƯỚC 1 — CHỌN KHU VỰC</div>
+        <div class="mapx" style="height:130px;position:relative">
+          <div style="position:absolute;left:36px;top:22px;width:150px;height:92px;border-radius:50%;background:rgba(211,47,47,.22);border:2px dashed var(--red)"></div>
+          <div style="position:absolute;right:10px;bottom:10px;background:#fff;border-radius:6px;padding:5px 9px;font-size:9px;font-weight:600;color:var(--gray)">✎ Vẽ vùng hoặc chọn thôn</div>
+        </div>
+        <div style="margin-top:9px"><span class="chip rd">✓ Thôn Pắc Liềng</span><span class="chip rd">✓ Thôn Nà Lầu</span><span class="chip">+ Thôn Khe Tiền</span></div>
+
+        <div class="lb rd">BƯỚC 2 — ĐIỂM SƠ TÁN ĐÍCH</div>
+        <div class="fld"><span>🏫 Trường TH Bình Liêu — còn 155 chỗ</span><span>▾</span></div>
+
+        <div class="lb rd">BƯỚC 3 — NỘI DUNG TIN NHẮN</div>
+        <div class="card"><div style="font-size:9px;font-weight:800;color:var(--t3);margin-bottom:4px">TIẾNG VIỆT</div>
+          <div style="font-size:11.5px;line-height:1.5">KHẨN: Lệnh sơ tán thôn Pắc Liềng, Nà Lầu. Toàn bộ hộ dân di chuyển ngay đến Trường TH Bình Liêu. Mang theo giấy tờ, thuốc men. Liên hệ 0203.123.456 nếu cần hỗ trợ di chuyển.</div></div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+          <span style="font-size:12px;font-weight:600">Gửi thêm bản Tiếng Tày</span>
+          <span style="width:42px;height:23px;border-radius:50px;background:var(--green);display:flex;align-items:center;justify-content:flex-end;padding:3px"><i style="width:17px;height:17px;border-radius:50%;background:#fff;display:block"></i></span>
+        </div>
+        <div class="card gy"><div style="font-size:9px;font-weight:800;color:var(--t3);margin-bottom:4px">TIẾNG TÀY</div>
+          <div style="font-size:11.5px;color:var(--gray);line-height:1.5">Khẩn: Slống bản Pắc Liềng, Nà Lầu pây d'ú Trường TH Bình Liêu. Au giấy tờ, dà slử pây nèm.</div></div>
+
+        <div class="card bl" style="font-size:11.5px;font-weight:700;color:var(--blue)">📣 Sẽ gửi đến 150 hộ dân (487 nhân khẩu)</div>
+        <div class="btn p">PHÁT LỆNH NGAY</div>
+      </div>
+    </div>
+
+    <!-- 17 WAREHOUSE -->
+    <div class="scr" id="s17">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">Kho Cứu Trợ</span><span class="r">8 mặt hàng</span></div>
+      <div class="tabs"><div class="on">Tồn kho</div><div>Nhập kho</div><div>Xuất kho</div><div>Đã phát</div></div>
+      <div class="bd">
+        <div class="card or" style="font-size:11.5px;font-weight:700;color:var(--orange)">⚠️ 2 mặt hàng sắp hết — cần bổ sung gấp</div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13.5px;font-weight:700">🦺 Áo phao</span><span class="chip rd" style="margin:0">⚠️ Sắp hết</span></div>
+          <div style="font-size:12px;font-weight:600;color:var(--red);margin:5px 0">Tồn kho: 15 cái</div>
+          <div class="bar"><i style="width:30%;background:var(--red)"></i></div>
+          <div style="font-size:9.5px;color:var(--t2)">15/50 cái</div>
+          <div class="row" style="margin-top:8px"><div class="btn ghg" style="font-size:11px;padding:9px;margin:0">Nhập kho</div><div class="btn ghb" style="font-size:11px;padding:9px;margin:0">Xuất cho đội</div></div>
+        </div>
+
+        <div class="card">
+          <div style="font-size:13.5px;font-weight:700">💧 Nước uống</div>
+          <div style="font-size:12px;font-weight:600;color:var(--green);margin:5px 0">Tồn kho: 340 chai</div>
+          <div class="bar"><i style="width:68%;background:var(--green)"></i></div>
+          <div style="font-size:9.5px;color:var(--t2)">340/500 chai</div>
+          <div class="row" style="margin-top:8px"><div class="btn ghg" style="font-size:11px;padding:9px;margin:0">Nhập kho</div><div class="btn ghb" style="font-size:11px;padding:9px;margin:0">Xuất cho đội</div></div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13.5px;font-weight:700">🛏️ Chăn</span><span class="chip rd" style="margin:0">⚠️ Sắp hết</span></div>
+          <div style="font-size:12px;font-weight:600;color:var(--orange);margin:5px 0">Tồn kho: 28 cái</div>
+          <div class="bar"><i style="width:19%;background:var(--orange)"></i></div>
+          <div style="font-size:9.5px;color:var(--t2)">28/150 cái</div>
+        </div>
+
+        <div class="card gr" style="font-size:10.5px;line-height:1.5">
+          <b style="color:var(--green)">📦 Gói cứu trợ ngoài danh mục — GCT-2025-0007</b><br>
+          <span style="color:var(--t2)">Nhóm thiện nguyện Hạ Long · 2/4 dòng đã map vào danh mục chuẩn</span>
+        </div>
+      </div>
+      <div class="bn"><div><i>🗺️</i>Bản đồ</div><div><i>📋</i>Đối chiếu</div><div><i>⛑️</i>Lực lượng</div><div class="on"><i>📦</i>Kho</div><div><i>📖</i>Nhật ký</div></div>
+    </div>
+
+    <!-- 18 ESCALATION -->
+    <div class="scr" id="s18">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">Leo thang &amp; Nhật ký</span></div>
+      <div class="tabs"><div class="on">Leo thang</div><div>Nhật ký</div></div>
+      <div class="bd">
+        <div class="card bl" style="font-size:10.5px;line-height:1.5"><b style="color:var(--blue)">ℹ️ Leo thang tự nó đã là tuyên bố "xã hết khả năng"</b><br><span style="color:var(--t2)">Không còn chọn mức khẩn cấp — huyện xếp ưu tiên dựa trên số liệu bên dưới.</span></div>
+
+        <div class="card rd">
+          <div style="font-size:11px;font-weight:800;color:var(--red);margin-bottom:8px">📊 CƠ SỞ LEO THANG — tự động tính lúc 09:52</div>
+          <table class="tbl">
+            <tr><td style="color:var(--gray)">SOS mức đỏ chưa có đội nhận</td><td style="color:var(--red)">12</td></tr>
+            <tr><td style="color:var(--gray)">Thời gian chờ lâu nhất</td><td style="color:var(--red)">1h 47ph</td></tr>
+            <tr><td style="color:var(--gray)">Hộ mất liên lạc &gt; 4 giờ</td><td style="color:var(--gray)">8</td></tr>
+            <tr><td style="color:var(--gray)">Đội khả dụng / tổng số</td><td style="color:var(--orange)">2 / 12</td></tr>
+            <tr><td style="color:var(--gray)">Mặt hàng dưới ngưỡng</td><td style="color:var(--orange)">2</td></tr>
+            <tr><td style="color:var(--gray)">Điểm sơ tán còn trống</td><td style="color:var(--green)">155 chỗ</td></tr>
+          </table>
+          <div style="font-size:9px;color:var(--t3);margin-top:7px">🔒 Số liệu hệ thống sinh — admin không sửa được</div>
+        </div>
+
+        <div class="lb">LOẠI YÊU CẦU</div>
+        <div style="display:flex;background:#EEE;border-radius:8px;padding:4px;gap:4px;margin-bottom:9px">
+          <div style="flex:1;text-align:center;padding:8px;font-size:11px;font-weight:700;background:var(--red);color:#fff;border-radius:6px">Nhân lực</div>
+          <div style="flex:1;text-align:center;padding:8px;font-size:11px;color:var(--t2)">Vật tư</div>
+          <div style="flex:1;text-align:center;padding:8px;font-size:11px;color:var(--t2)">Y tế</div>
+          <div style="flex:1;text-align:center;padding:8px;font-size:11px;color:var(--t2)">Khác</div>
+        </div>
+
+        <div class="lb">SỐ LƯỢNG CỤ THỂ CẦN</div>
+        <div class="row" style="margin-bottom:9px">
+          <div><div style="font-size:9.5px;color:var(--t2);margin-bottom:3px">Người</div><div class="fld" style="margin:0"><b style="font-size:15px">20</b><span style="color:var(--t2)">− +</span></div></div>
+          <div><div style="font-size:9.5px;color:var(--t2);margin-bottom:3px">Xuồng máy</div><div class="fld" style="margin:0"><b style="font-size:15px">3</b><span style="color:var(--t2)">− +</span></div></div>
+        </div>
+
+        <div class="card">
+          <div style="font-size:9px;font-weight:800;color:var(--t3);margin-bottom:4px">MÔ TẢ CHI TIẾT</div>
+          <div style="font-size:11.5px;line-height:1.5">Đường vào thôn Pắc Liềng bị sạt lở, không tiếp cận bằng xe. Cần xuồng máy đi đường sông.</div>
+        </div>
+        <div class="btn p">📢 GỬI YÊU CẦU LEO THANG LÊN HUYỆN</div>
+      </div>
+      <div class="bn"><div><i>🗺️</i>Bản đồ</div><div><i>📋</i>Đối chiếu</div><div><i>⛑️</i>Lực lượng</div><div><i>📦</i>Kho</div><div class="on"><i>📖</i>Nhật ký</div></div>
+    </div>
+
+    <!-- 25 MANUAL ENTRY -->
+    <div class="scr" id="s25">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Thêm hộ dân</span><span class="r">Hộ 1/1</span></div>
+      <div class="bd">
+        <div class="card bl" style="font-size:10.5px;line-height:1.5"><b style="color:var(--blue)">✎ Admin nhập thay hộ dân</b><br><span style="color:var(--t2)">Hộ chưa có tài khoản app vẫn được theo dõi. Khi hộ tự đăng ký sau, hệ thống ghép theo SĐT.</span></div>
+        <div class="lb rd">1. THÔNG TIN CHÍNH</div>
+        <div class="fld">Hoàng Văn Tú</div>
+        <div class="row" style="margin-bottom:9px"><div class="fld" style="margin:0">0965 111 222</div><div class="fld" style="margin:0">4</div></div>
+        <div class="fld"><span>Thôn Khe Tiền</span><span>▾</span></div>
+        <div style="display:flex;background:#EEE;border-radius:8px;padding:4px;gap:4px;margin-bottom:9px">
+          <div style="flex:1;text-align:center;padding:9px;font-size:12px;font-weight:700;background:var(--red);color:#fff;border-radius:6px">Cấp 4</div>
+          <div style="flex:1;text-align:center;padding:9px;font-size:12px;color:var(--t2)">Nhiều tầng</div>
+        </div>
+        <div class="lb rd">2. NGƯỜI DỄ BỊ TỔN THƯƠNG</div>
+        <div><span class="chip or">👶 Trẻ em</span><span class="chip">👴 Người già</span><span class="chip or">♿ Khuyết tật</span><span class="chip">🤰 Mang thai</span></div>
+        <div class="lb rd">3. VỊ TRÍ NHÀ</div>
+        <div class="mapx" style="height:92px">📍<span>Bấm chọn trên bản đồ</span></div>
+        <div class="row" style="margin:9px 0"><div class="btn ghb" style="font-size:10.5px;padding:10px;margin:0">📡 GPS hiện tại</div><div class="btn gh" style="font-size:10.5px;padding:10px;margin:0">⌨ Nhập toạ độ tay</div></div>
+        <div class="row"><div class="btn ghr" style="margin:0;font-size:11.5px">Lưu &amp; thêm hộ nữa</div><div class="btn p" style="margin:0;font-size:12px">Lưu &amp; đóng</div></div>
+      </div>
+    </div>
+
+    <!-- 26 DUPLICATE -->
+    <div class="scr" id="s26">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Xử lý trùng lặp</span><span class="r">Cặp 1/3</span></div>
+      <div class="bd">
+        <div class="card or" style="font-size:11.5px;font-weight:700;color:var(--orange)">⚠️ SĐT trùng: 0987654321</div>
+        <div style="display:flex;gap:8px;margin-bottom:9px">
+          <div style="flex:1;background:#fff;border:1px solid var(--gray);border-radius:9px;overflow:hidden">
+            <div style="background:var(--gray);color:#fff;font-size:9px;font-weight:800;text-align:center;padding:7px">ĐANG CÓ TRONG HỆ</div>
+            <div style="padding:8px 9px;border-bottom:1px solid #F0F0F0"><div style="font-size:8.5px;color:var(--t3)">Họ tên</div><div style="font-size:11px">Nguyễn Văn A</div></div>
+            <div style="padding:8px 9px;border-bottom:1px solid #F0F0F0"><div style="font-size:8.5px;color:var(--t3)">Thôn</div><div style="font-size:11px">Pắc Liềng</div></div>
+            <div style="padding:8px 9px;border-bottom:1px solid #F0F0F0"><div style="font-size:8.5px;color:var(--t3)">Số người</div><div style="font-size:11px">5</div></div>
+            <div style="padding:8px 9px"><div style="font-size:8.5px;color:var(--t3)">Cập nhật</div><div style="font-size:11px">12/08/2025</div></div>
+          </div>
+          <div style="flex:1;background:#fff;border:1px solid var(--blue);border-radius:9px;overflow:hidden">
+            <div style="background:var(--blue);color:#fff;font-size:9px;font-weight:800;text-align:center;padding:7px">TRONG FILE IMPORT</div>
+            <div style="padding:8px 9px;border-bottom:1px solid #F0F0F0;background:#FFEBEE"><div style="font-size:8.5px;color:var(--t3)">Họ tên</div><div style="font-size:11px;font-weight:700;color:var(--red)">⚠️ Chu Văn E</div></div>
+            <div style="padding:8px 9px;border-bottom:1px solid #F0F0F0;background:#FFEBEE"><div style="font-size:8.5px;color:var(--t3)">Thôn</div><div style="font-size:11px;font-weight:700;color:var(--red)">⚠️ Nà Lầu</div></div>
+            <div style="padding:8px 9px;border-bottom:1px solid #F0F0F0;background:#FFEBEE"><div style="font-size:8.5px;color:var(--t3)">Số người</div><div style="font-size:11px;font-weight:700;color:var(--red)">⚠️ 4</div></div>
+            <div style="padding:8px 9px"><div style="font-size:8.5px;color:var(--t3)">Cập nhật</div><div style="font-size:11px;color:var(--t3)">—</div></div>
+          </div>
+        </div>
+        <div style="font-size:10.5px;color:var(--t2);margin-bottom:9px">4 trường khác nhau — nhiều khả năng là 2 hộ khác nhau dùng nhầm SĐT</div>
+        <div class="lb">CHỌN CÁCH XỬ LÝ</div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><span style="font-size:17px">🔒</span>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Giữ bản cũ</div><div style="font-size:9.5px;color:var(--t2)">Bỏ qua dòng trong file import</div></div><span style="color:var(--t3)">○</span></div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><span style="font-size:17px">🔄</span>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Ghi đè bằng bản mới</div><div style="font-size:9.5px;color:var(--t2)">Dữ liệu cũ bị thay thế hoàn toàn</div></div><span style="color:var(--t3)">○</span></div>
+        <div class="card gr" style="display:flex;gap:10px;align-items:center;border-width:2px"><span style="font-size:17px">➕</span>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Tạo hộ mới — sửa SĐT</div><div style="font-size:9.5px;color:var(--t2)">Giữ cả 2 hộ, nhập SĐT khác cho hộ mới</div></div><span style="color:var(--green)">●</span></div>
+        <div class="fld" style="border-color:var(--green)"><span style="color:var(--t2);font-size:11px">SĐT mới cho hộ Chu Văn E</span><b>0987 654 999</b></div>
+        <div class="row"><div class="btn gh" style="margin:0;font-size:11px">Áp dụng cho cả 3 cặp</div><div class="btn p" style="margin:0;font-size:12px">Xác nhận → cặp 2</div></div>
+      </div>
+    </div>
+
+    <!-- 27 TEAM DETAIL -->
+    <div class="scr" id="s27">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Đội Dân quân Pắc Liềng</span></div>
+      <div class="bd">
+        <div class="card" style="border:2px solid var(--blue)">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip bl" style="margin:0">● Đang nhiệm vụ</span><span style="font-size:10.5px;font-weight:700;color:var(--blue)">📞 Gọi trưởng đội</span></div>
+          <div style="font-size:12px;font-weight:600;margin-top:7px">Trưởng đội: Lý Văn Thắng · 0912 345 678</div>
+          <div style="font-size:10.5px;color:var(--gray);margin-top:3px">Đang xử lý: SOS #DR-2025-0042 · Nhận lúc 09:45</div>
+        </div>
+        <div class="mapx" style="height:100px">⛑️<span>Vị trí GPS realtime — cập nhật 12 giây trước</span></div>
+        <div class="row" style="margin:9px 0">
+          <div class="card" style="margin:0"><div style="font-size:17px;font-weight:800;color:var(--blue)">8</div><div style="font-size:9.5px;color:var(--t2)">Thành viên</div></div>
+          <div class="card" style="margin:0"><div style="font-size:17px;font-weight:800;color:var(--green)">12</div><div style="font-size:9.5px;color:var(--t2)">Hộ đã cứu</div></div>
+          <div class="card" style="margin:0"><div style="font-size:17px;font-weight:800;color:var(--orange)">22ph</div><div style="font-size:9.5px;color:var(--t2)">Phản ứng TB</div></div>
+        </div>
+        <div class="lb">PHƯƠNG TIỆN</div>
+        <div><span class="chip">🚤 2 thuyền</span><span class="chip">🪢 Dây cứu hộ</span><span class="chip">🔦 4 đèn pin</span></div>
+
+        <div class="card gr" style="margin-top:9px">
+          <div style="font-size:11px;font-weight:800;color:var(--green);margin-bottom:7px">📦 VẬT TƯ ĐANG MANG — PHÂN BIỆT 2 NGUỒN</div>
+          <div style="background:#fff;border-radius:7px;padding:8px;margin-bottom:5px;display:flex;justify-content:space-between"><div><div style="font-size:11.5px;font-weight:600">Áo phao</div><div style="font-size:9px;color:var(--blue)">🏛️ Kho xã · PX-0012</div></div><b style="font-size:11.5px">20 cái</b></div>
+          <div style="background:#fff;border-radius:7px;padding:8px;margin-bottom:5px;display:flex;justify-content:space-between"><div><div style="font-size:11.5px;font-weight:600">Nước suối</div><div style="font-size:9px;color:var(--green)">🤝 Đội tự mang</div></div><b style="font-size:11.5px">200 chai</b></div>
+          <div style="background:#fff;border-radius:7px;padding:8px;display:flex;justify-content:space-between"><div><div style="font-size:11.5px;font-weight:600">Mì tôm</div><div style="font-size:9px;color:var(--green)">🤝 Đội tự mang</div></div><b style="font-size:11.5px">50 thùng</b></div>
+          <div style="font-size:9px;color:var(--t2);margin-top:7px">Hàng kho xã → trừ tồn kho khi phát. Hàng đội tự mang → không trừ, vẫn vào sổ cứu trợ.</div>
+        </div>
+        <div class="row" style="margin-bottom:8px"><div class="btn ghb" style="font-size:11px;padding:11px;margin:0">📍 Gán khu vực</div><div class="btn ghg" style="font-size:11px;padding:11px;margin:0">📦 Xuất vật tư</div></div>
+        <div class="btn b">🆘 Gán SOS cụ thể cho đội này</div>
+      </div>
+    </div>
+
+    <!-- 28 REPORT DETAIL -->
+    <div class="scr" id="s28">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Xác minh báo cáo</span><span class="r">1/4</span></div>
+      <div class="bd">
+        <div class="row" style="margin-bottom:9px"><div class="mapx" style="height:98px">🖼️<span>14:18 · 21.54,107.39</span></div><div class="mapx" style="height:98px">🖼️<span>14:18 · 21.54,107.39</span></div></div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">🌊 Lũ lụt — Thôn Nà Lầu</div>
+        <div class="card" style="font-size:11.5px;line-height:1.5">"Hàng xóm đang bị ngập tầng 1, nhà có 2 trẻ nhỏ và 1 cụ già không đi được."</div>
+
+        <div class="mapx" style="height:110px;position:relative">
+          <div style="position:absolute;left:70px;top:52px;width:170px;height:3px;background:var(--orange);border-top:2px dashed var(--orange)"></div>
+          <div class="pin" style="background:var(--blue);left:56px;top:38px;border-width:3px">📱</div>
+          <div class="pin" style="background:var(--red);left:236px;top:38px;width:32px;height:32px;border-width:3px">🆘</div>
+          <div style="position:absolute;left:104px;top:68px;background:#fff;border-radius:5px;padding:4px 8px;font-size:9.5px;font-weight:700;color:var(--orange)">320m</div>
+          <div style="position:absolute;left:9px;top:9px;background:#fff;border-radius:4px;padding:3px 6px;font-size:8.5px;font-weight:600">📱 Người báo</div>
+          <div style="position:absolute;right:9px;top:9px;background:#fff;border-radius:4px;padding:3px 6px;font-size:8.5px;font-weight:600">🆘 Nạn nhân</div>
+        </div>
+
+        <div class="card" style="border:1px solid var(--green);margin-top:9px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:10px;font-weight:800;color:var(--t2)">ĐỘ TIN CẬY</span><span style="font-size:16px;font-weight:800;color:var(--green)">80/100</span></div>
+          <div class="bar"><i style="width:80%;background:var(--green)"></i></div>
+          <table class="tbl" style="margin-top:5px">
+            <tr><td style="color:var(--gray)">Có ảnh hiện trường</td><td style="color:var(--green)">+20 ✅</td></tr>
+            <tr><td style="color:var(--gray)">GPS người báo &lt; 500m</td><td style="color:var(--green)">+15 ✅</td></tr>
+            <tr><td style="color:var(--gray)">Nhiều người báo cùng nơi</td><td style="color:var(--green)">+25 ✅</td></tr>
+            <tr><td style="color:var(--gray)">Tài khoản đã xác thực</td><td style="color:var(--green)">+10 ✅</td></tr>
+            <tr><td style="color:var(--gray)">Báo từ xa &gt; 5km</td><td style="color:var(--t3)">−15 —</td></tr>
+          </table>
+        </div>
+
+        <div class="card bl" style="font-size:10px;line-height:1.6"><b style="color:var(--blue)">🔗 2 báo cáo trùng khu vực (200m / 30 phút)</b><br>
+          <span style="color:var(--gray)">· 14:25 — "Nước ngập ngang hông ở xóm dưới" › xem<br>· 14:31 — "Cả dãy nhà ven sông bị ngập" › xem</span></div>
+
+        <div class="card" style="display:flex;gap:9px;align-items:center">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">👤</div>
+          <div><div style="font-size:11px;font-weight:600">Người báo: Trần Thị Mai · 0912 777 888</div>
+          <div style="font-size:9.5px;color:var(--green)">Đã báo 6 lần · 5 lần được duyệt (83% chính xác)</div></div>
+        </div>
+
+        <div class="btn g">✓ DUYỆT → TẠO SOS</div>
+        <div class="row"><div class="btn ghb" style="font-size:11px;padding:11px;margin:0">💬 Hỏi thêm</div><div class="btn ghr" style="font-size:11px;padding:11px;margin:0">✕ Từ chối</div></div>
+      </div>
+    </div>
+
+    <!-- 29 EVAC UPDATE + CHECKIN -->
+    <div class="scr" id="s29">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Trường TH Bình Liêu</span><span class="r">Đang mở</span></div>
+      <div class="bd">
+        <div class="lb">SỐ NGƯỜI HIỆN TẠI</div>
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+          <div style="width:40px;height:40px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--gray)">−</div>
+          <div style="text-align:center"><div style="font-size:24px;font-weight:800;color:var(--green)">45 / 200</div><div style="font-size:10px;color:var(--t2)">còn 155 chỗ</div></div>
+          <div style="width:40px;height:40px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff">+</div>
+        </div>
+        <div class="bar" style="height:9px"><i style="width:23%;background:var(--green)"></i></div>
+        <div class="lb">TRẠNG THÁI ĐIỂM</div>
+        <div><span class="chip gr">Mở</span><span class="chip">Sắp đầy</span><span class="chip">Đã đầy</span><span class="chip">Đóng — hỏng</span></div>
+
+        <div class="card gr" style="border-width:2px;margin-top:9px">
+          <div style="font-size:11px;font-weight:800;color:var(--green)">✅ CHECK-IN HỘ DÂN — tự đặt trạng thái An toàn</div>
+          <div style="font-size:9.5px;color:var(--t2);margin:4px 0 8px;line-height:1.5">Giải bài toán "hết pin / mất điện thoại" — hộ được xác nhận an toàn dù app không hoạt động.</div>
+          <div class="row" style="margin-bottom:8px"><div class="btn g" style="font-size:11px;padding:10px;margin:0">📷 Quét QR app hộ</div><div class="btn ghg" style="font-size:11px;padding:10px;margin:0">🔍 Tìm theo tên/SĐT</div></div>
+          <div style="background:#fff;border-radius:7px;padding:8px;margin-bottom:5px"><div style="font-size:11px;font-weight:600">✓ Nguyễn Văn A — Pắc Liềng</div><div style="font-size:9.5px;color:var(--t2)">5/5 người · check-in 09:52</div></div>
+          <div style="background:#fff;border-radius:7px;padding:8px"><div style="font-size:11px;font-weight:600">✓ Hoàng Thị D — Khe Tiền</div><div style="font-size:9.5px;color:var(--t2)">2/2 người · check-in 09:40</div></div>
+        </div>
+
+        <div class="lb">VẬT TƯ TẠI ĐIỂM</div>
+        <div class="card" style="padding:0">
+          <div style="padding:9px 11px;border-bottom:1px solid #F0F0F0;display:flex;justify-content:space-between;font-size:11.5px"><span>🛏️ Chăn</span><b>30 cái</b></div>
+          <div style="padding:9px 11px;border-bottom:1px solid #F0F0F0;display:flex;justify-content:space-between;font-size:11.5px"><span>💧 Nước</span><b>120 chai</b></div>
+          <div style="padding:9px 11px;border-bottom:1px solid #F0F0F0;display:flex;justify-content:space-between;font-size:11.5px"><span>🍞 Lương khô</span><b style="color:var(--red)">8 gói ⚠️ sắp hết</b></div>
+          <div style="padding:9px 11px;display:flex;justify-content:space-between;font-size:11.5px"><span>💊 Thuốc</span><b>15 hộp</b></div>
+        </div>
+        <div class="btn ghb" style="font-size:11.5px;margin-top:9px">📦 Yêu cầu bổ sung vật tư từ kho xã</div>
+        <div class="card" style="display:flex;gap:8px;align-items:center"><span style="font-size:14px">👤</span>
+          <div><div style="font-size:11px;font-weight:600">Phụ trách: Cô Vũ Thị Lan</div><div style="font-size:9.5px;color:var(--t2)">0203 456 789 — đội gọi trước khi chở người đến</div></div></div>
+        <div class="btn g">LƯU CẬP NHẬT</div>
+      </div>
+    </div>
+
+    <!-- 30 RECEIVE STOCK -->
+    <div class="scr" id="s30">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Nhập kho</span></div>
+      <div class="bd">
+        <div style="display:flex;background:#EEE;border-radius:8px;padding:4px;gap:4px;margin-bottom:9px">
+          <div style="flex:1;text-align:center;padding:9px;font-size:11.5px;color:var(--t2)">Hàng trong danh mục</div>
+          <div style="flex:1;text-align:center;padding:9px;font-size:11.5px;font-weight:700;background:var(--green);color:#fff;border-radius:6px">Gói hỗn hợp (mới)</div>
+        </div>
+        <div class="card gr" style="font-size:10.5px;line-height:1.5"><b style="color:var(--green)">📦 Đoàn từ thiện chở lô hàng hỗn hợp?</b><br><span style="color:var(--t2)">Nhập nhanh — hệ thống sinh mã gói ngay, phân loại sau. Không chặn luồng khẩn cấp.</span></div>
+
+        <div style="background:#212121;border-radius:10px;padding:12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+          <div><div style="font-size:9px;font-weight:800;color:var(--t3)">MÃ GÓI TỰ SINH</div><div style="font-size:20px;font-weight:900;color:#fff">GCT-2025-0007</div></div>
+          <div style="font-size:11px;font-weight:700;color:#fff">🖨 In nhãn</div>
+        </div>
+
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Đơn vị tài trợ *</div>
+        <div class="fld">Nhóm thiện nguyện Hạ Long</div>
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">SĐT liên hệ *</div>
+        <div class="fld">0988 123 456</div>
+
+        <div class="lb">NỘI DUNG GÓI — LIỆT KÊ THÔ, MAP SAU</div>
+        <div class="card" style="padding:0">
+          <div style="display:flex;padding:8px 10px;background:#EEE;font-size:9.5px;font-weight:800;color:var(--gray)"><span style="flex:2">Tên hàng</span><span style="flex:1">SL</span><span style="flex:1">Đơn vị</span><span style="flex:1">Map</span></div>
+          <div style="display:flex;padding:8px 10px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Mì tôm</span><b style="flex:1">200</b><span style="flex:1;color:var(--t2)">thùng</span><span style="flex:1;font-size:9px;color:var(--t3)">— chưa</span></div>
+          <div style="display:flex;padding:8px 10px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Nước suối</span><b style="flex:1">500</b><span style="flex:1;color:var(--t2)">chai</span><span style="flex:1;font-size:9px;font-weight:700;color:var(--green)">💧 Nước</span></div>
+          <div style="display:flex;padding:8px 10px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Quần áo cũ</span><b style="flex:1">12</b><span style="flex:1;color:var(--t2)">bao</span><span style="flex:1;font-size:9px;color:var(--t3)">— chưa</span></div>
+          <div style="display:flex;padding:8px 10px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Thuốc cảm</span><b style="flex:1">30</b><span style="flex:1;color:var(--t2)">hộp</span><span style="flex:1;font-size:9px;font-weight:700;color:var(--green)">💊 Thuốc</span></div>
+        </div>
+        <div class="btn ghg" style="font-size:11.5px;margin-top:8px">＋ Thêm dòng</div>
+        <div class="row" style="margin-bottom:9px"><div class="mapx" style="height:60px">🖼️</div><div class="mapx" style="height:60px">📷 ＋</div></div>
+        <div style="font-size:9.5px;color:var(--t2);margin-bottom:8px">2/4 dòng map được → cộng thẳng tồn kho. 2 dòng còn lại giữ theo mã gói.</div>
+        <div class="btn g">NHẬN GÓI — GCT-2025-0007</div>
+      </div>
+    </div>
+
+    <!-- 31 DISPATCH STOCK -->
+    <div class="scr" id="s31">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Xuất kho cho đội</span></div>
+      <div class="bd">
+        <div class="lb rd">1. CHỌN ĐỘI NHẬN</div>
+        <div class="card bl" style="border-width:2px;display:flex;gap:9px;align-items:center">
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Đội Dân quân Pắc Liềng</div>
+          <div style="font-size:10px;color:var(--t2);margin:3px 0">8 người · Thôn 1 · cách kho 1.4km</div>
+          <span class="chip bl" style="margin:0">Đang nhiệm vụ</span></div>
+          <span style="color:var(--blue);font-size:15px">●</span>
+        </div>
+        <div class="card" style="display:flex;gap:9px;align-items:center">
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Đội Cứu hộ MTQ Bình Liêu</div>
+          <div style="font-size:10px;color:var(--t2);margin:3px 0">12 người · Thôn 2-3 · tại kho</div>
+          <span class="chip gr" style="margin:0">Sẵn sàng</span></div>
+          <span style="color:var(--t3);font-size:15px">○</span>
+        </div>
+
+        <div class="lb rd">2. CHỌN HÀNG XUẤT</div>
+        <div class="card" style="padding:0">
+          <div style="display:flex;padding:9px 11px;align-items:center;gap:8px"><div style="flex:1"><div style="font-size:11.5px;font-weight:600">🦺 Áo phao</div><div style="font-size:9.5px;color:var(--red)">Tồn: 15 cái</div></div>
+            <span style="width:28px;height:28px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gray)">−</span><b style="width:26px;text-align:center">10</b><span style="width:28px;height:28px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">+</span></div>
+          <div style="display:flex;padding:9px 11px;align-items:center;gap:8px;border-top:1px solid #F0F0F0"><div style="flex:1"><div style="font-size:11.5px;font-weight:600">💧 Nước uống</div><div style="font-size:9.5px;color:var(--t2)">Tồn: 340 chai</div></div>
+            <span style="width:28px;height:28px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gray)">−</span><b style="width:26px;text-align:center">100</b><span style="width:28px;height:28px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">+</span></div>
+          <div style="display:flex;padding:9px 11px;align-items:center;gap:8px;border-top:1px solid #F0F0F0"><div style="flex:1"><div style="font-size:11.5px;font-weight:600">🍞 Lương khô</div><div style="font-size:9.5px;color:var(--t2)">Tồn: 120 gói</div></div>
+            <span style="width:28px;height:28px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gray)">−</span><b style="width:26px;text-align:center">30</b><span style="width:28px;height:28px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">+</span></div>
+        </div>
+        <div class="card or" style="font-size:10.5px;font-weight:600;color:var(--orange);margin-top:8px">⚠️ Xuất 10/15 áo phao — tồn còn 5, dưới ngưỡng cảnh báo (20)</div>
+
+        <div class="lb rd">3. PHIẾU XUẤT</div>
+        <div class="card" style="border:1px solid var(--blue)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:14px;font-weight:900;color:var(--blue)">PX-2025-0013</span><span style="font-size:9.5px;color:var(--t2)">03/08/2026 09:55</span></div>
+          <table class="tbl"><tr><td style="color:var(--t2)">Người xuất</td><td>Trần Văn Nam (Admin xã)</td></tr>
+          <tr><td style="color:var(--t2)">Người nhận</td><td>Lý Văn Thắng — trưởng đội</td></tr>
+          <tr><td style="color:var(--t2)">Tổng số dòng</td><td>3 mặt hàng · 140 đơn vị</td></tr></table>
+        </div>
+        <div class="row" style="margin-bottom:9px"><div class="btn gh" style="font-size:11px;padding:11px;margin:0">✍️ Ký nhận</div><div class="btn gh" style="font-size:11px;padding:11px;margin:0">📷 Ảnh bàn giao</div></div>
+        <div class="btn b">XÁC NHẬN XUẤT KHO</div>
+      </div>
+    </div>
+
+    <!-- 32 PACKAGE DETAIL -->
+    <div class="scr" id="s32">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← GCT-2025-0007</span><span class="r">Đã nhận</span></div>
+      <div class="bd">
+        <div style="background:#212121;border-radius:10px;padding:13px;margin-bottom:9px">
+          <div style="font-size:21px;font-weight:900;color:#fff">GCT-2025-0007</div>
+          <div style="font-size:10.5px;color:var(--t3);margin-top:3px">Nhóm thiện nguyện Hạ Long · 0988 123 456</div>
+          <div style="font-size:9.5px;color:var(--t2);margin-top:2px">Nhận 03/08/2026 14:20 bởi Trần Văn Nam</div>
+        </div>
+        <div style="display:flex;align-items:center;margin-bottom:9px">
+          <div style="flex:1;text-align:center"><div style="width:24px;height:24px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 3px">✓</div><div style="font-size:9.5px;font-weight:700;color:var(--green)">Đã nhận</div></div>
+          <div style="flex:1;text-align:center"><div style="width:24px;height:24px;border-radius:50%;background:var(--bd);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 3px">2</div><div style="font-size:9.5px;color:var(--t3)">Đã phân loại</div></div>
+          <div style="flex:1;text-align:center"><div style="width:24px;height:24px;border-radius:50%;background:var(--bd);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto 3px">3</div><div style="font-size:9.5px;color:var(--t3)">Đã phát</div></div>
+        </div>
+        <div class="card gr" style="font-size:10.5px;line-height:1.5"><b style="color:var(--green)">📋 Phân loại: map từng dòng vào danh mục chuẩn</b><br><span style="color:var(--t2)">Dòng map được → cộng tồn kho. Dòng không map → giữ dạng "hàng khác" theo mã gói này.</span></div>
+
+        <div class="lb">NỘI DUNG GÓI — 2/4 ĐÃ MAP</div>
+        <div class="card" style="border-color:#C8E6C9"><div style="font-size:12.5px;font-weight:700">Nước suối — 500 chai</div>
+          <div style="font-size:9.5px;font-weight:600;color:var(--green);margin-top:3px">✓ đã map → 💧 Nước uống · đã cộng tồn kho</div></div>
+        <div class="card" style="border-color:#C8E6C9"><div style="font-size:12.5px;font-weight:700">Thuốc cảm — 30 hộp</div>
+          <div style="font-size:9.5px;font-weight:600;color:var(--green);margin-top:3px">✓ đã map → 💊 Thuốc y tế · đã cộng tồn kho</div></div>
+        <div class="card" style="border-color:#FFE0B2;display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:12.5px;font-weight:700">Mì tôm — 200 thùng</div>
+          <div style="font-size:9.5px;font-weight:600;color:var(--orange);margin-top:3px">⚠️ chưa map — giữ theo mã gói</div></div>
+          <span class="chip or" style="margin:0">Map →</span></div>
+        <div class="card" style="border-color:#FFE0B2;display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:12.5px;font-weight:700">Quần áo cũ — 12 bao</div>
+          <div style="font-size:9.5px;font-weight:600;color:var(--orange);margin-top:3px">⚠️ chưa map — giữ theo mã gói</div></div>
+          <span class="chip or" style="margin:0">Map →</span></div>
+
+        <div class="lb">LỊCH SỬ PHÁT TỪ GÓI NÀY</div>
+        <div class="card" style="font-size:10.5px;line-height:1.9">
+          <div>● 15:10 — Hộ Nguyễn Văn A — 1 gói nguyên (chưa phân loại)</div>
+          <div>● 15:35 — Hộ Trần Thị B — 2 thùng mì tôm</div>
+          <div>● 16:02 — Đội MTQ Bình Liêu — 100 chai nước</div>
+        </div>
+        <div class="row"><div class="btn ghо" style="margin:0;font-size:11px">📤 Phát nguyên gói</div><div class="btn g" style="margin:0;font-size:11px">✓ Hoàn tất phân loại</div></div>
+      </div>
+    </div>
+
+    <!-- 33 LOG DETAIL -->
+    <div class="scr" id="s33">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Chi tiết sự kiện</span><span class="r">LOG-88421</span></div>
+      <div class="bd">
+        <div class="card" style="border:2px solid var(--blue)">
+          <div style="display:flex;gap:9px;align-items:center;margin-bottom:7px">
+            <div style="width:38px;height:38px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:17px">🆘</div>
+            <div><div style="font-size:13.5px;font-weight:700">Gán đội cho SOS</div><div style="font-size:10.5px;color:var(--t2)">03/08/2026 14:35:12</div></div>
+          </div>
+          <table class="tbl">
+            <tr><td style="color:var(--t2)">Người thực hiện</td><td>Trần Văn Nam — Admin xã</td></tr>
+            <tr><td style="color:var(--t2)">Từ đâu</td><td>App mobile · 21.5412°N</td></tr>
+            <tr><td style="color:var(--t2)">Thiết bị</td><td>Android 13 · v1.0.4</td></tr>
+          </table>
+        </div>
+
+        <div class="lb">THAY ĐỔI GÌ</div>
+        <div style="display:flex;gap:9px;align-items:center;margin-bottom:9px">
+          <div style="flex:1;background:#FFEBEE;border:1px solid var(--red);border-radius:8px;padding:10px">
+            <div style="font-size:9px;font-weight:800;color:var(--red)">TRƯỚC</div>
+            <div style="font-size:11px;font-weight:600;margin-top:3px">status: verified</div>
+            <div style="font-size:9.5px;color:var(--t2)">assignedTeam: null</div></div>
+          <span style="font-size:17px;color:var(--t3)">→</span>
+          <div style="flex:1;background:#E8F5E9;border:1px solid var(--green);border-radius:8px;padding:10px">
+            <div style="font-size:9px;font-weight:800;color:var(--green)">SAU</div>
+            <div style="font-size:11px;font-weight:600;margin-top:3px">status: assigned</div>
+            <div style="font-size:9.5px;color:var(--t2)">assignedTeam: Dân quân 1</div></div>
+        </div>
+
+        <div class="lb">ĐỐI TƯỢNG LIÊN QUAN</div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><span style="font-size:15px">🆘</span>
+          <div style="flex:1"><div style="font-size:11.5px;font-weight:700">SOS #DR-2025-0042</div><div style="font-size:9.5px;color:var(--t2)">Hộ Nguyễn Văn A · Thôn Pắc Liềng</div></div><span style="color:var(--t3)">›</span></div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><span style="font-size:15px">⛑️</span>
+          <div style="flex:1"><div style="font-size:11.5px;font-weight:700">Đội Dân quân Pắc Liềng</div><div style="font-size:9.5px;color:var(--t2)">8 người · 2 thuyền</div></div><span style="color:var(--t3)">›</span></div>
+
+        <div class="lb">CHUỖI SỰ KIỆN CỦA SOS #0042</div>
+        <div class="card" style="font-size:10.5px;line-height:2">
+          <div><span style="color:var(--red)">●</span> 14:12 — SOS tạo — điểm ưu tiên 85 (ĐỎ)</div>
+          <div><span style="color:var(--orange)">●</span> 14:20 — Admin xác minh → verified</div>
+          <div style="background:#E3F2FD;border-radius:5px;padding:2px 5px;font-weight:700"><span style="color:var(--blue)">●</span> 14:35 — Gán cho Đội Dân quân 1</div>
+          <div><span style="color:var(--blue)">●</span> 14:58 — Đội báo đã đến hiện trường</div>
+          <div><span style="color:var(--green)">●</span> 15:22 — Hoàn thành — cứu 5 người</div>
+        </div>
+        <div class="btn ghb" style="font-size:12px">📤 Xuất nhật ký sự kiện (PDF / Excel)</div>
+      </div>
+    </div>
+
+    <!-- 37 STANDING FORCE -->
+    <div class="scr" id="s37">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Lực lượng thường trực</span><span class="r">5 đội</span></div>
+      <div class="bd">
+        <div class="card bl" style="font-size:10.5px;line-height:1.5"><b style="color:var(--blue)">📅 CÔNG TÁC CHUẨN BỊ — làm trước mùa thiên tai</b><br><span style="color:var(--t2)">Đội biên chế xã khai báo sẵn 1 lần. Khi có thiên tai chỉ cần kích hoạt 1 chạm, không phải đăng ký và chờ duyệt.</span></div>
+        <div class="row" style="margin-bottom:9px">
+          <div class="card" style="margin:0"><div style="font-size:19px;font-weight:800;color:var(--blue)">5</div><div style="font-size:9.5px;color:var(--t2)">Đội thường trực</div></div>
+          <div class="card" style="margin:0"><div style="font-size:19px;font-weight:800;color:var(--green)">31</div><div style="font-size:9.5px;color:var(--t2)">Tổng nhân lực</div></div>
+          <div class="card" style="margin:0"><div style="font-size:19px;font-weight:800;color:var(--orange)">8</div><div style="font-size:9.5px;color:var(--t2)">Phương tiện</div></div>
+        </div>
+        <div class="card gr">
+          <div style="font-size:11px;font-weight:800;color:var(--green);margin-bottom:6px">📦 TỔNG VẬT TƯ BIÊN CHẾ CÁC ĐỘI</div>
+          <table class="tbl"><tr><td style="color:var(--gray)">Áo phao</td><td>32 cái</td></tr>
+          <tr><td style="color:var(--gray)">Đèn pin</td><td>18 cái</td></tr>
+          <tr><td style="color:var(--gray)">Túi sơ cứu</td><td>7 túi</td></tr>
+          <tr><td style="color:var(--gray)">Máy phát điện</td><td>2 máy</td></tr></table>
+          <div style="font-size:9px;color:var(--t2);margin-top:6px">Được cộng vào "Tổng vật tư khả dụng" ở màn Leo thang.</div>
+        </div>
+        <div class="lb">DANH SÁCH ĐỘI THƯỜNG TRỰC</div>
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;font-weight:700">Đội Dân quân Pắc Liềng</div><div style="font-size:9.5px;color:var(--t2)">Lý Văn Thắng · 8 người · Thôn Pắc Liềng</div></div><span class="chip gr" style="margin:0">Đã kích hoạt</span></div>
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;font-weight:700">Tổ Xung kích Nà Lầu</div><div style="font-size:9.5px;color:var(--t2)">Hoàng Văn Đại · 6 người · Thôn Nà Lầu</div></div><span class="chip gr" style="margin:0">Đã kích hoạt</span></div>
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;font-weight:700">Đội Y tế xã Bình Liêu</div><div style="font-size:9.5px;color:var(--t2)">BS. Vũ Thị Hoa · 4 người · Toàn xã</div></div><span class="chip gr" style="margin:0">Đã kích hoạt</span></div>
+        <div class="card" style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12px;font-weight:700">Đội Dân quân Khe Tiền</div><div style="font-size:9.5px;color:var(--t2)">Chu Văn Bình · 5 người · Thôn Khe Tiền</div></div><span class="chip" style="margin:0">Chưa kích hoạt</span></div>
+        <div class="row"><div class="btn ghb" style="margin:0;font-size:12px">＋ Thêm đội</div><div class="btn g" style="margin:0;font-size:12px">⚡ Kích hoạt toàn bộ</div></div>
+      </div>
+    </div>
+
+    <!-- 38 EDIT STANDING TEAM -->
+    <div class="scr" id="s38">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Đội Dân quân Pắc Liềng</span><span class="r">Lưu</span></div>
+      <div class="bd">
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Tên đội *</div>
+        <div class="fld">Đội Dân quân Thôn Pắc Liềng</div>
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Loại đội</div>
+        <div><span class="chip bl">Dân quân</span><span class="chip">Tổ xung kích</span><span class="chip">Y tế</span><span class="chip">Đường thuỷ</span></div>
+        <div class="row" style="margin:9px 0"><div class="fld" style="margin:0">Lý Văn Thắng</div><div class="fld" style="margin:0">0912 345 678</div></div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:10.5px;font-weight:800;color:var(--t2)">THÀNH VIÊN (8)</span><span style="font-size:10.5px;font-weight:700;color:var(--blue)">＋ Thêm</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:10.5px;padding:2px 0"><span>Lý Văn Thắng — trưởng đội</span><span style="color:var(--t2)">0912 345 678</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:10.5px;padding:2px 0"><span>Nông Văn Hùng</span><span style="color:var(--t2)">0987 222 111</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:10.5px;padding:2px 0"><span>Chu Thị Mai</span><span style="color:var(--t2)">0965 333 444</span></div>
+          <div style="font-size:9.5px;color:var(--t3);margin-top:4px">… và 5 người khác</div>
+        </div>
+
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Phương tiện</div>
+        <div><span class="chip gr">🚤 2 thuyền</span><span class="chip gr">🏍️ 3 xe máy</span><span class="chip">🚚 Xe tải</span></div>
+
+        <div class="card gr" style="border-width:2px;margin-top:9px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+            <span style="font-size:11px;font-weight:800;color:var(--green)">📦 VẬT TƯ BIÊN CHẾ</span>
+            <span style="background:var(--green);color:#fff;font-size:8.5px;font-weight:700;padding:3px 7px;border-radius:4px">standingEquipment</span></div>
+          <div style="background:#fff;border-radius:7px;padding:0;border:1px solid #C8E6C9">
+            <div style="display:flex;padding:7px 9px;background:#F1F8E9;font-size:9.5px;font-weight:800;color:var(--gray)"><span style="flex:2">Vật tư</span><span style="flex:1">SL</span><span style="flex:1">Đơn vị</span></div>
+            <div style="display:flex;padding:7px 9px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Áo phao</span><b style="flex:1">10</b><span style="flex:1;color:var(--t2)">cái</span></div>
+            <div style="display:flex;padding:7px 9px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Đèn pin</span><b style="flex:1">4</b><span style="flex:1;color:var(--t2)">cái</span></div>
+            <div style="display:flex;padding:7px 9px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Dây cứu hộ</span><b style="flex:1">2</b><span style="flex:1;color:var(--t2)">cuộn</span></div>
+          </div>
+          <div class="btn ghg" style="font-size:11px;padding:9px;margin:7px 0 0">＋ Thêm vật tư</div>
+          <div style="font-size:9px;color:var(--t2);margin-top:6px">Khác "vật tư mang theo" của đội vãng lai: đây là tài sản biên chế, luôn có mặt mọi đợt thiên tai.</div>
+        </div>
+
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin:9px 0 4px">Khu vực phụ trách</div>
+        <div><span class="chip bl">Thôn Pắc Liềng</span><span class="chip">Thôn Nà Lầu</span></div>
+
+        <div style="background:#212121;border-radius:10px;padding:11px;display:flex;gap:11px;align-items:center;margin:9px 0">
+          <div style="width:48px;height:48px;background:#fff;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:24px">▩</div>
+          <div style="flex:1"><div style="font-size:10.5px;font-weight:700;color:#fff">Mã QR của đội</div>
+          <div style="font-size:13px;font-weight:900;color:#fff">DR-BL-DQ-PL01</div>
+          <div style="font-size:8.5px;color:var(--t3)">Quét tại chốt để kích hoạt 1 chạm</div></div>
+          <span style="font-size:16px;color:#fff">🖨</span>
+        </div>
+        <div class="btn b">LƯU ĐỘI THƯỜNG TRỰC</div>
+      </div>
+    </div>
+
+    <!-- 41 HOUSEHOLD DETAIL -->
+    <div class="scr" id="s41">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Hộ Nguyễn Văn A</span><span class="r">Sửa</span></div>
+      <div class="bd">
+        <div class="card" style="border:2px solid var(--gray)">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="chip gy" style="margin:0">Mất liên lạc — thiết bị im lặng 4h</span><span style="font-size:15px">📞</span></div>
+          <div style="font-size:14.5px;font-weight:700;margin-top:7px">Nguyễn Văn A · 0987 654 321</div>
+          <div style="font-size:10.5px;color:var(--gray);margin-top:3px">Thôn Pắc Liềng · 5 người · nhà cấp 4</div>
+          <div style="background:var(--bg);border-radius:7px;padding:8px;margin-top:7px;display:flex;justify-content:space-between;align-items:center">
+            <div><div style="font-size:10.5px;font-weight:600">Tín hiệu cuối: 10:30 hôm qua (app)</div>
+            <div style="font-size:9px;color:var(--t3)">source: self_app · confidence 90 · đã hết hạn</div></div>
+            <span style="font-size:14px">⚠️</span></div>
+        </div>
+        <div><span class="chip or">👶 2 trẻ em</span><span class="chip or">👴 1 người già</span><span class="chip or">🏚️ Nhà cấp 4</span><span class="chip or">📍 Vùng ảnh hưởng</span></div>
+        <div class="mapx" style="height:80px;margin-top:9px;position:relative">
+          <div style="position:absolute;left:88px;top:12px;width:110px;height:56px;border-radius:50%;background:rgba(211,47,47,.18);border:1.5px dashed var(--red)"></div>
+          <div class="pin" style="background:var(--gray);left:130px;top:24px;border-width:3px">🏠</div>
+          <div style="position:absolute;left:8px;top:8px;background:#fff;border-radius:5px;padding:4px 7px;font-size:8.5px;font-weight:600">21.5412°N 107.3985°E</div>
+        </div>
+
+        <div class="lb">LỊCH SỬ TRẠNG THÁI</div>
+        <div class="card" style="font-size:10.5px">
+          <div style="display:flex;gap:8px;padding:5px 0;align-items:flex-start"><span style="color:var(--gray)">●</span><div style="flex:1"><div style="font-weight:600">Tự đánh dấu Mất liên lạc</div><div style="font-size:9px;color:var(--t3)">hệ thống · im lặng &gt; 4 giờ</div></div><span style="color:var(--t2);font-size:9px">09:52</span></div>
+          <div style="display:flex;gap:8px;padding:5px 0;align-items:flex-start"><span style="color:var(--orange)">●</span><div style="flex:1"><div style="font-weight:600">Không phản hồi xác nhận lần 3</div><div style="font-size:9px;color:var(--t3)">đã hỏi 06:30, 07:30, 08:30</div></div><span style="color:var(--t2);font-size:9px">08:30</span></div>
+          <div style="display:flex;gap:8px;padding:5px 0;align-items:flex-start"><span style="color:var(--green)">●</span><div style="flex:1"><div style="font-weight:600">Xác nhận An toàn</div><div style="font-size:9px;color:var(--t3)">source: self_app · confidence 90</div></div><span style="color:var(--t2);font-size:9px">Hôm qua</span></div>
+          <div style="display:flex;gap:8px;padding:5px 0;align-items:flex-start"><span style="color:var(--blue)">●</span><div style="flex:1"><div style="font-weight:600">Nhận cứu trợ</div><div style="font-size:9px;color:var(--t3)">2 chai nước, 1 chăn</div></div><span style="color:var(--t2);font-size:9px">Hôm qua</span></div>
+        </div>
+
+        <div class="lb">SỔ CỨU TRỢ CỦA HỘ</div>
+        <div class="card"><div style="display:flex;justify-content:space-between"><div><div style="font-size:11px;font-weight:700;color:var(--green)">BN-2025-0198</div><div style="font-size:10px;color:var(--gray)">2 chai nước · 1 chăn</div></div><span style="font-size:9px;color:var(--t3)">Hôm qua 09:15</span></div></div>
+
+        <div class="row" style="margin-bottom:8px"><div class="btn ghb" style="font-size:11px;padding:11px;margin:0">📞 Gọi hộ</div><div class="btn ghb" style="font-size:11px;padding:11px;margin:0">🗺️ Xem trên bản đồ</div></div>
+        <div class="row" style="margin-bottom:8px"><div class="btn ghо" style="font-size:11px;padding:11px;margin:0">🏛️ Đánh dấu an toàn</div><div class="btn ghr" style="font-size:11px;padding:11px;margin:0">🆘 Tạo SOS thay hộ</div></div>
+        <div class="btn" style="background:var(--gray);color:#fff">⛑️ GỬI ĐỘI ĐI KIỂM TRA</div>
+      </div>
+    </div>
+
+    <!-- 20 MISSIONS -->
+    <div class="scr" id="s20">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ban">⚠️ Mất mạng — dữ liệu cache 09:12</div>
+      <div class="ab"><span class="t">Nhiệm vụ — Thôn Pắc Liềng</span><span class="r">5 SOS</span></div>
+      <div style="height:210px;background:var(--map);position:relative;flex-shrink:0">
+        <div style="position:absolute;left:0;top:100px;width:100%;height:7px;background:#fff;opacity:.75"></div>
+        <div style="position:absolute;left:180px;top:0;width:7px;height:100%;background:#fff;opacity:.75"></div>
+        <div class="pin" style="background:var(--red);left:60px;top:48px">🆘</div>
+        <div class="pin" style="background:var(--red);left:140px;top:140px">🆘</div>
+        <div class="pin" style="background:var(--orange);left:236px;top:66px">🆘</div>
+        <div class="pin" style="background:var(--yellow);left:290px;top:156px">🆘</div>
+        <div class="pin" style="background:var(--blue);left:112px;top:88px;border-width:3px">⛑️</div>
+      </div>
+      <div style="flex:1;background:#fff;border-radius:15px 15px 0 0;padding:12px;overflow-y:auto;margin-top:-12px;position:relative">
+        <div style="width:42px;height:5px;background:var(--bd);border-radius:3px;margin:0 auto 11px"></div>
+        <div class="card" style="border:2px solid var(--red)">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:5px 10px;border-radius:5px">ĐỎ — KHẨN CẤP</span><span style="font-size:11.5px;font-weight:600">🌊 Lũ lụt</span></div>
+          <div style="font-size:11.5px;margin:6px 0 3px">📍 Thôn Pắc Liềng (500m)</div>
+          <div style="font-size:11.5px;color:var(--gray);margin-bottom:8px">👥 Số người: 5</div>
+          <div class="btn p" style="padding:11px;margin:0;font-size:12.5px">TÔI ĐI →</div>
+        </div>
+        <div class="card" style="border:2px solid var(--red)">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:5px 10px;border-radius:5px">ĐỎ — KHẨN CẤP</span><span style="font-size:11.5px;font-weight:600">⛰️ Sạt lở</span></div>
+          <div style="font-size:11.5px;margin:6px 0 3px">📍 Thôn Pắc Liềng (1.2km)</div>
+          <div style="font-size:11.5px;color:var(--gray);margin-bottom:8px">👥 Số người: 3</div>
+          <div style="background:#EEE;border-radius:8px;padding:11px;text-align:center;font-size:11.5px;font-weight:700;color:var(--t2)">⛑️ Đội A đang đến</div>
+        </div>
+        <div class="card" style="border:2px solid var(--orange)">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="background:var(--orange);color:#fff;font-size:10px;font-weight:700;padding:5px 10px;border-radius:5px">CAM — NGUY HIỂM</span><span style="font-size:11.5px;font-weight:600">🌊 Lũ lụt</span></div>
+          <div style="font-size:11.5px;margin:6px 0 3px">📍 Thôn Nà Lầu (2.1km)</div>
+          <div style="font-size:11.5px;color:var(--gray);margin-bottom:8px">👥 Số người: 7</div>
+          <div class="btn o" style="padding:11px;margin:0;font-size:12.5px">TÔI ĐI →</div>
+        </div>
+        <div class="card gy" style="font-size:9.5px;color:var(--t2);display:flex;gap:6px;align-items:center">🔒 Chưa nhận nhiệm vụ — không hiện tên, SĐT, địa chỉ cụ thể</div>
+      </div>
+    </div>
+
+    <!-- 21 SOS DETAIL -->
+    <div class="scr" id="s21">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Chi tiết SOS #0042</span><span class="r">ĐỎ</span></div>
+      <div style="height:160px;background:var(--map);position:relative;flex-shrink:0">
+        <div style="position:absolute;left:55px;top:75px;width:200px;height:5px;background:var(--blue);transform:rotate(-14deg)"></div>
+        <div class="pin" style="background:var(--blue);left:38px;top:96px;border-width:3px">⛑️</div>
+        <div class="pin" style="background:var(--red);left:252px;top:26px;width:34px;height:34px;border-width:3px">🆘</div>
+        <div style="position:absolute;left:10px;top:10px;background:#fff;border-radius:6px;padding:6px 10px;font-size:10.5px;font-weight:700">🧭 500m · ~8 phút đi bộ</div>
+      </div>
+      <div class="bd">
+        <div class="card" style="border:2px solid var(--red)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px"><span style="background:var(--red);color:#fff;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:5px">!! ĐỎ — 85 điểm</span><span style="font-size:12.5px;font-weight:700">🌊 Lũ lụt</span></div>
+          <div style="font-size:14.5px;font-weight:700">Nguyễn Văn A · 0987 654 321</div>
+          <div style="font-size:11.5px;color:var(--gray);margin-top:3px">📍 Thôn Pắc Liềng, xã Bình Liêu — nhà cấp 4 cạnh cây gạo</div>
+          <div style="font-size:10px;color:var(--t3);margin-top:2px">21.5412° N, 107.3985° E</div>
+        </div>
+        <div class="card gr" style="font-size:10px;font-weight:600;color:var(--green)">🔓 Đã nhận nhiệm vụ — thông tin đầy đủ được mở khóa</div>
+        <div class="card">
+          <div style="font-size:9px;font-weight:800;color:var(--t2);margin-bottom:6px">TÌNH HÌNH</div>
+          <div><span class="chip or">👥 5 người</span><span class="chip or">👶 2 trẻ em</span><span class="chip or">👴 1 người già</span><span class="chip or">💊 Cần thuốc</span><span class="chip or">🌊 Nước ngang ngực</span></div>
+          <div style="font-size:9px;font-weight:800;color:var(--t2);margin:9px 0 6px">ẢNH HIỆN TRƯỜNG (2)</div>
+          <div class="row"><div class="mapx" style="height:66px">🖼️</div><div class="mapx" style="height:66px">🖼️</div></div>
+        </div>
+        <div class="card or" style="font-size:10.5px;font-weight:600;color:var(--orange)">⚠️ Chướng ngại: cây đổ chắn đường Km2 — đi vòng lối ruộng</div>
+        <div class="row" style="margin-bottom:8px"><div class="btn ghb" style="font-size:12px;padding:12px;margin:0">📞 Gọi</div><div class="btn b" style="font-size:12px;padding:12px;margin:0">🧭 Dẫn đường</div></div>
+        <div class="btn g">✓ BÁO CÁO HOÀN THÀNH</div>
+      </div>
+    </div>
+
+    <!-- 22 COMPLETION -->
+    <div class="scr" id="s22">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Báo cáo hoàn thành</span><span class="r">#0042</span></div>
+      <div class="bd">
+        <div class="card gr" style="display:flex;gap:9px;align-items:center">
+          <span style="font-size:20px">✅</span>
+          <div><div style="font-size:12.5px;font-weight:700">SOS #DR-2025-0042 — Nguyễn Văn A</div>
+          <div style="font-size:10.5px;color:var(--gray)">Nhận lúc 09:45 · Đến nơi 09:58</div></div>
+        </div>
+
+        <div class="lb">KẾT QUẢ CỨU HỘ</div>
+        <div style="display:flex;background:#EEE;border-radius:8px;padding:4px;gap:4px;margin-bottom:9px">
+          <div style="flex:1;text-align:center;padding:9px;font-size:11px;font-weight:700;background:var(--green);color:#fff;border-radius:6px">Thành công</div>
+          <div style="flex:1;text-align:center;padding:9px;font-size:11px;color:var(--t2)">Một phần</div>
+          <div style="flex:1;text-align:center;padding:9px;font-size:11px;color:var(--t2)">Không tiếp cận</div>
+        </div>
+
+        <div class="row" style="margin-bottom:9px">
+          <div><div style="font-size:10px;color:var(--t2);margin-bottom:3px">Số người đã cứu</div><div class="fld" style="margin:0"><b style="font-size:15px">5</b><span style="color:var(--t2)">− +</span></div></div>
+          <div><div style="font-size:10px;color:var(--t2);margin-bottom:3px">Người bị thương</div><div class="fld" style="margin:0"><b style="font-size:15px">1</b><span style="color:var(--t2)">− +</span></div></div>
+        </div>
+
+        <div class="lb">TÌNH TRẠNG NGƯỜI ĐƯỢC CỨU</div>
+        <div><span class="chip gr">✓ Đã đưa tới điểm sơ tán</span><span class="chip gr">🚑 Cần y tế</span><span class="chip">🏠 Ở lại nhà</span><span class="chip gr">💊 Đã cấp thuốc</span></div>
+
+        <div class="card" style="margin-top:9px">
+          <div style="font-size:9px;font-weight:800;color:var(--t3);margin-bottom:4px">GHI CHÚ HIỆN TRƯỜNG</div>
+          <div style="font-size:11.5px;line-height:1.5">Đã đưa 5 người tới Trường TH Bình Liêu. Cụ ông 78 tuổi bị trầy chân, đã băng bó, cần y tế kiểm tra. Nhà ngập ~1.2m.</div>
+        </div>
+
+        <div class="lb">ẢNH XÁC NHẬN (BẮT BUỘC 1 ẢNH)</div>
+        <div class="row" style="margin-bottom:10px"><div class="mapx" style="height:70px">🖼️</div><div class="mapx" style="height:70px">🖼️</div><div class="mapx" style="height:70px">📷 ＋</div></div>
+
+        <div class="btn g">✓ GỬI BÁO CÁO HOÀN THÀNH</div>
+        <div class="btn ghо" style="font-size:12px">⚠️ Báo chướng ngại thay vì hoàn thành</div>
+      </div>
+    </div>
+
+    <!-- 19 MTQ REGISTER -->
+    <div class="scr" id="s19">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Đăng ký Đội Cứu hộ</span></div>
+      <div class="tabs"><div>Tại chỗ (QR)</div><div class="on">Từ xa</div></div>
+      <div class="bd">
+        <div class="lb rd">THÔNG TIN ĐỘI</div>
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Tên đơn vị / tổ chức *</div>
+        <div class="fld">Hội Chữ thập đỏ Hạ Long</div>
+        <div class="row" style="margin-bottom:9px"><div class="fld" style="margin:0">Nguyễn Văn Hùng</div><div class="fld" style="margin:0">0912 888 777</div></div>
+        <div class="row" style="margin-bottom:9px"><div class="fld" style="margin:0">15 người</div><div class="fld" style="margin:0">11:30 hôm nay</div></div>
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Phương tiện</div>
+        <div><span class="chip gr">🚚 Xe tải</span><span class="chip">🚤 Thuyền</span><span class="chip gr">🚑 Xe cứu thương</span><span class="chip">🏍️ Xe máy</span></div>
+
+        <div class="card gr" style="border-width:2px;margin-top:9px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+            <span style="font-size:11px;font-weight:800;color:var(--green)">📦 VẬT TƯ MANG THEO</span>
+            <span style="background:var(--green);color:#fff;font-size:8.5px;font-weight:700;padding:3px 7px;border-radius:4px">MỚI</span></div>
+          <div style="background:#fff;border-radius:7px;border:1px solid #C8E6C9">
+            <div style="display:flex;padding:7px 9px;background:#F1F8E9;font-size:9.5px;font-weight:800;color:var(--gray)"><span style="flex:2">Loại hàng</span><span style="flex:1">SL</span><span style="flex:1">Đơn vị</span></div>
+            <div style="display:flex;padding:7px 9px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Mì tôm</span><b style="flex:1">50</b><span style="flex:1;color:var(--t2)">thùng</span></div>
+            <div style="display:flex;padding:7px 9px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Nước suối</span><b style="flex:1">200</b><span style="flex:1;color:var(--t2)">chai</span></div>
+            <div style="display:flex;padding:7px 9px;border-top:1px solid #F0F0F0;font-size:11px"><span style="flex:2">Áo phao</span><b style="flex:1">20</b><span style="flex:1;color:var(--t2)">cái</span></div>
+          </div>
+          <div class="btn ghg" style="font-size:11px;padding:9px;margin:7px 0 0">＋ Thêm dòng vật tư</div>
+          <div style="font-size:9px;color:var(--t2);margin-top:6px">Vật tư này KHÔNG trừ tồn kho xã khi phát — được ghi nguồn "Đội tự mang" trong sổ cứu trợ.</div>
+        </div>
+
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin:9px 0 4px">Khu vực muốn hỗ trợ</div>
+        <div><span class="chip bl">Thôn Pắc Liềng</span><span class="chip">Thôn Nà Lầu</span><span class="chip bl">Bất kỳ đâu cần</span></div>
+        <div class="card" style="background:var(--warn);border-color:var(--yellow);margin-top:9px;font-size:11px;font-weight:700;color:var(--orange)">⏳ Chờ admin duyệt — dự kiến 2-3 phút</div>
+        <div class="btn g">GỬI ĐĂNG KÝ</div>
+      </div>
+    </div>
+
+    <!-- 23 SITUATION BOARD -->
+    <div class="scr" id="s23">
+      <div class="sb dk"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab" style="background:var(--red)"><span class="t" style="color:#fff">📊 Tình hình Thiên tai</span><span style="font-size:10.5px;font-weight:700;color:#fff">Không cần đăng nhập</span></div>
+      <div class="bd">
+        <div class="card rd"><div style="font-size:13.5px;font-weight:700;color:var(--red)">🌊 LŨ LỤT — Xã Bình Liêu, Quảng Ninh</div>
+          <div style="font-size:10.5px;color:var(--t2);margin-top:3px">Đang diễn ra · Cập nhật 09:52 hôm nay</div></div>
+        <div class="mapx" style="height:140px;position:relative">
+          <div style="position:absolute;left:0;top:70px;width:100%;height:5px;background:#fff;opacity:.75"></div>
+          <div style="position:absolute;left:150px;top:0;width:5px;height:100%;background:#fff;opacity:.75"></div>
+          <div style="position:absolute;left:28px;top:40px;width:130px;height:86px;border-radius:50%;background:rgba(211,47,47,.2);border:2px solid var(--red)"></div>
+          <div class="pin" style="background:var(--green);left:218px;top:34px;width:26px;height:26px;font-size:11px">🏫</div>
+          <div class="pin" style="background:var(--green);left:276px;top:96px;width:26px;height:26px;font-size:11px">🏫</div>
+          <div class="pin" style="background:var(--orange);left:70px;top:62px;width:26px;height:26px;font-size:11px">⚠️</div>
+        </div>
+
+        <div class="lb">SỐ LIỆU TỔNG HỢP (SỐ TUYỆT ĐỐI)</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <div class="card" style="flex:1 1 45%;margin:0"><div style="font-size:20px;font-weight:800;color:var(--gray)">480</div><div style="font-size:9.5px;color:var(--t2)">Tổng hộ dân</div></div>
+          <div class="card" style="flex:1 1 45%;margin:0"><div style="font-size:20px;font-weight:800;color:var(--green)">280</div><div style="font-size:9.5px;color:var(--t2)">Đã an toàn</div></div>
+          <div class="card" style="flex:1 1 45%;margin:0"><div style="font-size:20px;font-weight:800;color:var(--red)">12</div><div style="font-size:9.5px;color:var(--t2)">SOS đang chờ</div></div>
+          <div class="card" style="flex:1 1 45%;margin:0"><div style="font-size:20px;font-weight:800;color:var(--orange)">5</div><div style="font-size:9.5px;color:var(--t2)">Đội đang cứu</div></div>
+          <div class="card" style="flex:1 1 45%;margin:0"><div style="font-size:20px;font-weight:800;color:var(--gray)">8</div><div style="font-size:9.5px;color:var(--t2)">Mất liên lạc</div></div>
+          <div class="card" style="flex:1 1 45%;margin:0"><div style="font-size:20px;font-weight:800;color:var(--blue)">155</div><div style="font-size:9.5px;color:var(--t2)">Chỗ sơ tán trống</div></div>
+        </div>
+
+        <div class="lb rd">NHU CẦU CỨU TRỢ ĐANG CẦN</div>
+        <div class="card" style="background:var(--warn);border-color:var(--yellow)">
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0"><span style="font-weight:600">🦺 Áo phao</span><b style="color:var(--orange)">Cần 35 cái</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0"><span style="font-weight:600">🛏️ Chăn</span><b style="color:var(--orange)">Cần 120 cái</b></div>
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;padding:3px 0"><span style="font-weight:600">💧 Nước uống</span><b style="color:var(--orange)">Cần 160 chai</b></div>
+          <div style="font-size:9.5px;color:var(--t2);margin-top:5px">Liên hệ ủng hộ: UBND xã Bình Liêu — 0203.123.456</div>
+        </div>
+
+        <div class="lb">HÌNH ẢNH HIỆN TRƯỜNG</div>
+        <div class="row" style="margin-bottom:10px"><div class="mapx" style="height:62px">🖼️</div><div class="mapx" style="height:62px">🖼️</div><div class="mapx" style="height:62px">🖼️</div></div>
+        <div class="btn p">🆘 Tôi cần cứu hộ — Đăng nhập / Đăng ký</div>
+      </div>
+    </div>
+
+    <!-- 34 TEAM STATUS -->
+    <div class="scr" id="s34">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">Trạng thái đội của tôi</span></div>
+      <div style="background:var(--blue);padding:14px;text-align:center;flex-shrink:0">
+        <div style="font-size:9.5px;font-weight:800;color:#fff;opacity:.85">ĐANG LÀ</div>
+        <div style="font-size:19px;font-weight:800;color:#fff;margin:4px 0">● Đang nhiệm vụ</div>
+        <div style="font-size:10.5px;color:#fff;opacity:.9">SOS #DR-2025-0042 · nhận lúc 09:45</div>
+      </div>
+      <div class="bd">
+        <div class="card or" style="font-size:10.5px;line-height:1.5"><b style="color:var(--orange)">⚠️ Đội nghỉ mà không báo = SOS bị treo</b><br><span style="color:var(--t2)">Hệ thống vẫn đẩy SOS cho đội, không ai nhận, đồng hồ leo thang vẫn chạy. Đây là cách mất SOS phổ biến nhất.</span></div>
+
+        <div class="lb">CHỌN TRẠNG THÁI MỚI</div>
+        <div class="card" style="display:flex;gap:11px;align-items:center"><span style="font-size:16px">🟢</span>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">Sẵn sàng</div><div style="font-size:9.5px;color:var(--t2)">Nhận push SOS mới trong khu vực</div></div><span style="color:var(--t3)">○</span></div>
+        <div class="card bl" style="display:flex;gap:11px;align-items:center;border-width:2px"><span style="font-size:16px">🔵</span>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">Đang nhiệm vụ</div><div style="font-size:9.5px;color:var(--t2)">Hệ thống tự đặt khi bấm "Tôi đi"</div></div><span class="chip bl" style="margin:0">Hiện tại</span></div>
+        <div class="card" style="display:flex;gap:11px;align-items:center"><span style="font-size:16px">🟠</span>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">Tạm nghỉ</div><div style="font-size:9.5px;color:var(--t2)">KHÔNG nhận SOS mới — phải nhập giờ quay lại</div></div><span style="color:var(--t3)">○</span></div>
+        <div class="card" style="display:flex;gap:11px;align-items:center"><span style="font-size:16px">⚫</span>
+          <div style="flex:1"><div style="font-size:13px;font-weight:700">Kết thúc ca</div><div style="font-size:9.5px;color:var(--t2)">Rút khỏi đợt thiên tai này</div></div><span style="color:var(--t3)">○</span></div>
+
+        <div class="card" style="background:var(--warn);border-color:var(--yellow)">
+          <div style="font-size:10.5px;font-weight:800;color:var(--orange);margin-bottom:7px">🟠 NẾU CHỌN "TẠM NGHỈ" — BẮT BUỘC ĐIỀN</div>
+          <div style="font-size:10px;font-weight:600;color:var(--t2);margin-bottom:4px">Lý do</div>
+          <div><span class="chip or">😮‍💨 Hồi sức</span><span class="chip">🍚 Ăn cơm</span><span class="chip">🔧 Sửa phương tiện</span><span class="chip">➕ Khác</span></div>
+          <div style="font-size:10px;font-weight:600;color:var(--t2);margin:7px 0 4px">Dự kiến quay lại</div>
+          <div class="fld" style="border-color:var(--orange);margin:0"><b>🕐 14:00 hôm nay</b><span>▾</span></div>
+          <div style="font-size:9px;color:var(--t2);margin-top:6px">Admin sẽ thấy: "Tạm nghỉ — quay lại 14:00" và điều SOS cho đội khác.</div>
+        </div>
+        <div class="card gy" style="font-size:9.5px;line-height:1.5"><b>📡 Trạng thái "Mất kết nối" do hệ thống tự đặt</b><br><span style="color:var(--t2)">Không có tín hiệu &gt; 30 phút → admin nhận cảnh báo vì có thể đội gặp sự cố.</span></div>
+        <div class="btn o">CẬP NHẬT TRẠNG THÁI</div>
+      </div>
+    </div>
+
+    <!-- 35 DELIVERY -->
+    <div class="scr" id="s35">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Phát hàng cứu trợ</span><span class="r">SOS #0042</span></div>
+      <div class="bd">
+        <div class="card" style="display:flex;gap:10px;align-items:center"><span style="font-size:17px">🏠</span>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Hộ Nguyễn Văn A</div><div style="font-size:10px;color:var(--t2)">Thôn Pắc Liềng · 5 người · 2 trẻ em</div></div>
+          <span style="font-size:10.5px;font-weight:700;color:var(--blue)">Đổi ▾</span></div>
+
+        <div class="lb">CHỌN HÀNG PHÁT — TỪ VẬT TƯ ĐỘI ĐANG MANG</div>
+        <div class="card" style="padding:0">
+          <div style="display:flex;padding:9px 11px;align-items:center;gap:8px"><div style="flex:1"><div style="font-size:11.5px;font-weight:600">🦺 Áo phao · còn 20</div><div style="font-size:9px;font-weight:600;color:var(--blue)">🏛️ Kho xã</div></div>
+            <span style="width:27px;height:27px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gray)">−</span><b style="width:22px;text-align:center">5</b><span style="width:27px;height:27px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">+</span></div>
+          <div style="display:flex;padding:9px 11px;align-items:center;gap:8px;border-top:1px solid #F0F0F0"><div style="flex:1"><div style="font-size:11.5px;font-weight:600">💧 Nước suối · còn 200</div><div style="font-size:9px;font-weight:600;color:var(--green)">🤝 Đội tự mang</div></div>
+            <span style="width:27px;height:27px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gray)">−</span><b style="width:22px;text-align:center">20</b><span style="width:27px;height:27px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">+</span></div>
+          <div style="display:flex;padding:9px 11px;align-items:center;gap:8px;border-top:1px solid #F0F0F0"><div style="flex:1"><div style="font-size:11.5px;font-weight:600">🍜 Mì tôm · còn 50</div><div style="font-size:9px;font-weight:600;color:var(--green)">🤝 Đội tự mang</div></div>
+            <span style="width:27px;height:27px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gray)">−</span><b style="width:22px;text-align:center">3</b><span style="width:27px;height:27px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">+</span></div>
+        </div>
+
+        <div class="card or" style="font-size:10.5px;font-weight:600;color:var(--orange)">⚠️ Hộ này đã nhận nước suối lúc 08:15 hôm nay — xác nhận phát tiếp?</div>
+
+        <div class="card" style="border:2px solid var(--green)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;font-weight:900;color:var(--green)">BIÊN NHẬN BN-2025-0288</span><span style="font-size:9.5px;color:var(--t2)">03/08 16:10</span></div>
+          <table class="tbl"><tr><td style="color:var(--t2)">Hộ nhận</td><td>Nguyễn Văn A · 0987654321</td></tr>
+          <tr><td style="color:var(--t2)">Người phát</td><td>Lý Văn Thắng</td></tr>
+          <tr><td style="color:var(--t2)">Tổng</td><td>3 mặt hàng · 28 đơn vị</td></tr></table>
+          <div style="font-size:9px;color:var(--t2);margin-top:6px">Nguồn: 1 mặt hàng kho xã (trừ tồn) · 2 mặt hàng đội tự mang (không trừ)</div>
+        </div>
+        <div class="row" style="margin-bottom:9px"><div class="btn gh" style="font-size:11px;padding:11px;margin:0">✍️ Chữ ký hộ</div><div class="btn gh" style="font-size:11px;padding:11px;margin:0">📷 Ảnh bàn giao</div></div>
+        <div class="btn g">XÁC NHẬN PHÁT — TẠO BIÊN NHẬN</div>
+      </div>
+    </div>
+
+    <!-- 36 CONFIRM SAFE -->
+    <div class="scr" id="s36">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Xác nhận an toàn</span><span class="r">SOS #0042</span></div>
+      <div class="bd">
+        <div class="card gr" style="font-size:10.5px;line-height:1.5"><b style="color:var(--green)">🔑 Nguồn xác nhận tin cậy CAO NHẤT (100 điểm)</b><br><span style="color:var(--t2)">Kèm ảnh + GPS + thời gian. Dùng khi hộ mất điện thoại, hết pin, hoặc không dùng được app.</span></div>
+
+        <div class="card" style="border:2px solid var(--green)">
+          <div style="font-size:14.5px;font-weight:700">🏠 Hộ Nguyễn Văn A</div>
+          <div style="font-size:10.5px;color:var(--t2);margin-top:3px">Thôn Pắc Liềng · hồ sơ ghi 5 người</div>
+          <div style="background:var(--bg);border-radius:8px;padding:9px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:11.5px;font-weight:600">Số người có mặt</span>
+            <span style="display:flex;gap:8px;align-items:center"><span style="width:30px;height:30px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gray)">−</span><b style="font-size:17px">5</b><span style="width:30px;height:30px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">+</span></span>
+          </div>
+          <div style="background:#E8F5E9;border-radius:7px;padding:8px;margin-top:7px;font-size:11px;font-weight:700;color:var(--green)">✓ Đủ 5/5 người theo hồ sơ</div>
+        </div>
+
+        <div class="lb">TÌNH TRẠNG SAU CỨU HỘ</div>
+        <div class="card gr" style="display:flex;gap:10px;align-items:center;border-width:2px"><span style="font-size:16px">🏫</span>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Đã đưa tới điểm sơ tán</div><div style="font-size:9.5px;color:var(--t2)">Trường TH Bình Liêu — sẽ tự check-in</div></div><span style="color:var(--green)">●</span></div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><span style="font-size:16px">🏠</span>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Ở lại nhà — đã an toàn</div><div style="font-size:9.5px;color:var(--t2)">Nhà không bị ảnh hưởng thêm</div></div><span style="color:var(--t3)">○</span></div>
+        <div class="card" style="display:flex;gap:10px;align-items:center"><span style="font-size:16px">🚑</span>
+          <div style="flex:1"><div style="font-size:12.5px;font-weight:700">Đã chuyển tới cơ sở y tế</div><div style="font-size:9.5px;color:var(--t2)">Cần theo dõi riêng</div></div><span style="color:var(--t3)">○</span></div>
+
+        <div class="card or" style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11.5px;font-weight:600">🚑 Người bị thương cần y tế</span><b style="font-size:16px;color:var(--orange)">1</b></div>
+
+        <div class="lb">ẢNH XÁC NHẬN (BẮT BUỘC 1 ẢNH)</div>
+        <div class="row" style="margin-bottom:9px"><div class="mapx" style="height:66px">🖼️<span>16:05 · GPS ✓</span></div><div class="mapx" style="height:66px">📷 ＋</div></div>
+
+        <div class="card gy">
+          <div style="font-size:9.5px;font-weight:800;color:var(--t2);margin-bottom:5px">GHI VÀO HỒ SƠ HỘ</div>
+          <table class="tbl"><tr><td style="color:var(--t3)">status</td><td style="color:var(--green)">safe</td></tr>
+          <tr><td style="color:var(--t3)">source</td><td style="color:var(--green)">rescue_team</td></tr>
+          <tr><td style="color:var(--t3)">verifiedBy</td><td style="color:var(--green)">Lý Văn Thắng</td></tr>
+          <tr><td style="color:var(--t3)">confidence</td><td style="color:var(--green)">100</td></tr></table>
+        </div>
+        <div class="btn g">✓ XÁC NHẬN HỘ NÀY AN TOÀN</div>
+      </div>
+    </div>
+
+    <!-- 39 QR SCAN -->
+    <div class="scr" id="s39">
+      <div class="sb dk"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab" style="background:#212121"><span class="t" style="color:#fff">← Quét mã QR</span><span style="font-size:11px;font-weight:700;color:#fff">Đèn 🔦</span></div>
+      <div style="height:330px;background:#3A3A3A;position:relative;flex-shrink:0">
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.35)"></div>
+        <div style="position:absolute;left:75px;top:50px;width:220px;height:220px;background:#5A5A5A;border-radius:12px"></div>
+        <div style="position:absolute;left:110px;top:85px;width:150px;height:150px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:46px">▩▩</div>
+        <div style="position:absolute;left:70px;top:45px;width:26px;height:5px;background:var(--green)"></div><div style="position:absolute;left:70px;top:45px;width:5px;height:26px;background:var(--green)"></div>
+        <div style="position:absolute;right:70px;top:45px;width:26px;height:5px;background:var(--green)"></div><div style="position:absolute;right:70px;top:45px;width:5px;height:26px;background:var(--green)"></div>
+        <div style="position:absolute;left:70px;bottom:55px;width:26px;height:5px;background:var(--green)"></div><div style="position:absolute;left:70px;bottom:55px;width:5px;height:26px;background:var(--green)"></div>
+        <div style="position:absolute;right:70px;bottom:55px;width:26px;height:5px;background:var(--green)"></div><div style="position:absolute;right:70px;bottom:55px;width:5px;height:26px;background:var(--green)"></div>
+        <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:14px;background:rgba(0,0,0,.75);border-radius:50px;padding:8px 14px;font-size:11.5px;font-weight:600;color:#fff">Đưa mã QR vào khung</div>
+      </div>
+      <div class="bd" style="background:#212121">
+        <div style="font-size:9.5px;font-weight:800;color:var(--t3);margin-bottom:8px">MÃ QR DÙNG CHO 2 TRƯỜNG HỢP</div>
+        <div style="background:#2E2E2E;border-radius:10px;padding:11px;display:flex;gap:10px;align-items:center;margin-bottom:8px">
+          <div style="width:36px;height:36px;background:var(--blue);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🏛️</div>
+          <div><div style="font-size:12px;font-weight:700;color:#fff">Đội thường trực của xã</div><div style="font-size:9.5px;color:var(--t3)">Quét mã đội → kích hoạt ngay, không cần duyệt</div></div>
+        </div>
+        <div style="background:#2E2E2E;border-radius:10px;padding:11px;display:flex;gap:10px;align-items:center;margin-bottom:12px">
+          <div style="width:36px;height:36px;background:var(--orange);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">🤝</div>
+          <div><div style="font-size:12px;font-weight:700;color:#fff">Đơn vị hỗ trợ đến chi viện</div><div style="font-size:9.5px;color:var(--t3)">Quét mã chốt → mở form đăng ký, chờ duyệt 2-3 phút</div></div>
+        </div>
+        <div style="background:#2E2E2E;border:1px solid #5A5A5A;border-radius:8px;padding:13px;display:flex;justify-content:space-between;font-size:12.5px;font-weight:600;color:#fff">⌨ Nhập mã thủ công <span style="color:var(--t2)">DR-BL-____</span></div>
+        <div style="font-size:9.5px;color:var(--t2);text-align:center;margin-top:9px">Không quét được? Đọc mã cho cán bộ tại chốt tiếp nhận.</div>
+      </div>
+    </div>
+
+    <!-- 40 QR RESULT -->
+    <div class="scr" id="s40">
+      <div class="sb"><span>9:41</span><span>▮▮ ᯤ ▓</span></div>
+      <div class="ab"><span class="t">← Kết quả quét</span></div>
+      <div class="bd">
+        <div class="lb bl">NHÁNH A — MÃ ĐỘI THƯỜNG TRỰC</div>
+        <div class="card bl" style="border-width:2px">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:9px">
+            <div style="width:38px;height:38px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;flex-shrink:0">✓</div>
+            <div><div style="font-size:14px;font-weight:900;color:var(--blue)">DR-BL-DQ-PL01</div><div style="font-size:11.5px;font-weight:700">Đội Dân quân Thôn Pắc Liềng</div></div>
+          </div>
+          <div style="background:#fff;border-radius:7px;padding:9px">
+            <table class="tbl"><tr><td style="color:var(--t2)">Trưởng đội</td><td>Lý Văn Thắng</td></tr>
+            <tr><td style="color:var(--t2)">Quân số</td><td>8 người · 2 thuyền</td></tr>
+            <tr><td style="color:var(--t2)">Vật tư biên chế</td><td>10 áo phao · 4 đèn pin</td></tr>
+            <tr><td style="color:var(--t2)">Khu vực</td><td>Thôn Pắc Liềng</td></tr></table>
+          </div>
+          <div style="font-size:10px;font-weight:600;color:var(--t2);margin:8px 0 4px">Quân số hôm nay (nếu khác biên chế)</div>
+          <div style="background:#fff;border-radius:8px;padding:8px;display:flex;justify-content:space-between;align-items:center">
+            <span style="width:30px;height:30px;background:var(--bg);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--gray)">−</span>
+            <b style="font-size:14px">7 / 8 người</b>
+            <span style="width:30px;height:30px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff">+</span>
+          </div>
+          <div class="btn g" style="margin:9px 0 5px;font-size:12.5px">⚡ KÍCH HOẠT NGAY — KHÔNG CẦN DUYỆT</div>
+          <div style="font-size:9px;color:var(--t2);text-align:center">Trạng thái → Sẵn sàng · bắt đầu nhận SOS trong khu vực phụ trách</div>
+        </div>
+
+        <div class="lb or">NHÁNH B — MÃ CHỐT / MÃ LẠ</div>
+        <div class="card or" style="border-width:2px">
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+            <div style="width:38px;height:38px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;flex-shrink:0">?</div>
+            <div><div style="font-size:14px;font-weight:900;color:var(--orange)">DR-BL-CHOT-01</div><div style="font-size:11px;font-weight:700">Chốt tiếp nhận UBND xã Bình Liêu</div></div>
+          </div>
+          <div style="font-size:11px;color:var(--gray);margin-bottom:8px">Mã này không thuộc đội thường trực nào. Bạn là đơn vị đến chi viện?</div>
+          <div class="btn o" style="margin-bottom:5px;font-size:12.5px">📝 ĐĂNG KÝ ĐỘI MỚI TẠI CHỐT</div>
+          <div style="font-size:9px;color:var(--t2);text-align:center">Form ngắn: tên đại diện, SĐT, số người, phương tiện, vật tư mang theo</div>
+        </div>
+
+        <div class="card gy" style="font-size:10px;line-height:1.5"><b>ℹ️ Một chốt — một thao tác</b><br><span style="color:var(--t2)">Cán bộ tại chốt không phải phân biệt trước đội nào thuộc loại nào. Hệ thống tự nhận diện từ mã.</span></div>
+        <div class="btn gh">Quét mã khác</div>
+      </div>
+    </div>
+
+  </div><!-- /phone -->
+</div><!-- /stage -->
+
+<!-- ================= INFO PANEL ================= -->
+<div class="info">
+  <h2>THÔNG SỐ KỸ THUẬT</h2>
+  <div class="sec"><div class="k">DỰ ÁN</div><div class="v">DisasterRescue — Điều phối Cứu hộ Khẩn cấp Thiên tai cấp xã</div></div>
+  <div class="sec"><div class="k">PHÂN QUYỀN HỆ THỐNG</div>
+    <div class="p">1. Hộ dân (Mobile App)<br>2. Admin xã (Điều phối)<br>3. Đội cứu hộ (Field Task)<br>4. Công chúng (Situation Board)</div></div>
+  <div class="sec"><div class="k">STACK</div><div class="p">Flutter · Riverpod · Hive · Firebase · flutter_map + OpenStreetMap</div></div>
+  <hr>
+  <div id="ip"></div>
+  <hr>
+  <div class="sec"><div class="k">TÀI LIỆU</div><div class="p" style="font-size:11.5px">SRS v1.1 — 41 màn, 123 kết nối prototype<br>Bài tập lớn CSE441 — Đại học Thuỷ Lợi</div></div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+var META = {
+ s01:{n:'01 · Splash',fr:['FR-01'],d:'Kiểm tra auth state, tối đa 2 giây. Đã đăng nhập → định tuyến vai trò; chưa → màn Đăng nhập.',w:''},
+ s02:{n:'02 · Đăng nhập',fr:['FR-01.1'],d:'Sai mật khẩu thì giữ nguyên input đã nhập, không xoá. Nút disable khi đang submit để chống bấm 2 lần.',w:'Nút "Xem tình hình thiên tai" dẫn tới Situation Board — không cần tài khoản.'},
+ s03:{n:'03 · Chọn vai trò',fr:['FR-01.5'],d:'CHỈ hiện khi user có từ 2 vai trò trở lên. Một vai trò thì vào thẳng màn tương ứng.',w:'Situation Board KHÔNG phải vai trò. Trường hợp nhiều vai rất phổ biến: trưởng thôn kiêm chủ hộ kiêm dân quân.'},
+ s04:{n:'04 · Trang chủ hộ dân',fr:['FR-17.5','FR-02'],d:'Phân 3 tầng theo mức khẩn cấp: SOS (phút) → Cần hỗ trợ sơ tán + Tôi an toàn (giờ) → Báo về người/nơi khác.',w:'Nút SOS phải là phần tử lớn nhất màn hình. Hai nút tầng 3 có thể ẩn khi không có thiên tai.'},
+ s05:{n:'05 · SOS 1 chạm',fr:['FR-02','FR-02.3'],d:'Bấm 1 lần là gửi ngay. Phần "Thêm thông tin" chỉ mở SAU khi đã gửi.',w:'KHÔNG chặn gửi SOS vì thiếu dữ liệu — điểm ưu tiên tính được từ hồ sơ hộ đã đăng ký. Offline thì ghi Hive queue.'},
+ s06b:{n:'06b · Cần hỗ trợ sơ tán',fr:['FR-17'],d:'Tạo AssistanceRequest — đối tượng riêng, hàng đợi riêng, SLA 3 giờ, không chạy đồng hồ leo thang.',w:'Thay cho luồng A cũ đã loại bỏ. SOS tính bằng phút, cái này tính bằng giờ.'},
+ s07:{n:'07 · Xác nhận an toàn',fr:['FR-07','FR-07.3'],d:'Kích hoạt khi: có thiên tai đang diễn ra + hộ chưa gửi SOS + chưa xác nhận quá 2 giờ. Không có nút đóng.',w:'Trạng thái an toàn KHÔNG được phụ thuộc duy nhất vào điện thoại hộ dân — hết pin trong lũ là chuyện bình thường. Có 5 nguồn xác nhận.'},
+ s06:{n:'06 · Báo tin cho xã',fr:['FR-03'],d:'Stepper 2 bước. Luồng B tạo report chờ admin xác minh; luồng C hiện ngay trên bản đồ, không tạo SOS.',w:'ĐÃ BỎ luồng A "Tôi cần được cứu — form đầy đủ" vì trùng kết quả với nút SOS. Màn này chỉ dành cho việc của NGƯỜI KHÁC hoặc NƠI KHÁC.'},
+ s08:{n:'08 · Thông báo',fr:['FR-14'],d:'Chưa đọc có nền xanh nhạt. Bấm vào mở màn chi tiết tương ứng với loại thông báo.',w:''},
+ s09:{n:'09 · Đăng ký hộ dân',fr:['FR-01.2'],d:'Thu thập đủ dữ liệu để tính điểm ưu tiên SOS ngay cả khi hộ không điền gì thêm lúc gửi SOS.',w:'Số thành viên, loại nhà và người yếu thế khai ở đây chính là đầu vào cho công thức tính điểm FR-02.3.'},
+ s24:{n:'24 · Chi tiết thông báo',fr:['FR-14','FR-15.2'],d:'Nội dung và nút hành động đổi theo loại thông báo: cảnh báo thời tiết, lệnh sơ tán, SOS của tôi, phát cứu trợ.',w:'Lệnh sơ tán có bản Tiếng Tày cho vùng Bình Liêu — yêu cầu đa ngôn ngữ FR-15.'},
+ s10:{n:'10 · Dashboard bản đồ',fr:['FR-08.1'],d:'OSM tiles, marker theo loại thiên tai và màu theo mức ưu tiên. FAB menu 5 hành động.',w:'KPI hiển thị SỐ TUYỆT ĐỐI: "280/480 hộ an toàn", không dùng phần trăm.'},
+ s12:{n:'12 · Đối chiếu hộ dân',fr:['FR-05.2','FR-06.3'],d:'Sắp xếp mặc định theo số hộ mất liên lạc giảm dần. Bấm card mở chi tiết hộ.',w:'Chip phải TÁCH "Mất liên lạc — thiết bị im lặng" (xám, phải cử người kiểm tra) khỏi "An toàn — đội xác nhận" (xanh, không cần làm gì).'},
+ s13:{n:'13 · Lực lượng cứu hộ',fr:['FR-09.6','FR-09.8'],d:'Hai loại đội: thường trực (biên chế xã, kích hoạt 1 chạm) và vãng lai (tự đăng ký, chờ duyệt). Năm trạng thái.',w:'Logic gán đội PHẢI lọc status = available. Gán cho đội đang nghỉ khiến SOS treo mà đồng hồ leo thang vẫn chạy.'},
+ s17:{n:'17 · Kho cứu trợ',fr:['FR-10','FR-10.7'],d:'Mô hình 2 tầng: danh mục chuẩn có tồn kho, và gói cứu trợ hỗn hợp mã GCT-2025-xxxx.',w:'Bốn nguồn hàng khi phát; chỉ hàng từ kho xã mới trừ tồn kho, ba nguồn còn lại vẫn phải vào sổ cứu trợ.'},
+ s18:{n:'18 · Leo thang & Nhật ký',fr:['FR-13.1'],d:'Khối "Cơ sở leo thang" do hệ thống tự sinh, admin không sửa được. Giữ lại loại yêu cầu và số lượng cụ thể cần.',w:'ĐÃ BỎ trường mức khẩn cấp. Leo thang tự nó đã là tuyên bố xã hết khả năng; nhãn tự đánh giá vô nghĩa vì xã nào cũng chọn mức cao nhất.'},
+ s11:{n:'11 · Import dân cư',fr:['FR-05.1'],d:'Ba nguồn file phù hợp mobile: chọn từ máy, nhận từ Zalo/Email, hoặc link Google Sheet.',w:'ĐÃ BỎ kéo-thả vì không phù hợp mobile. Đây là công tác chuẩn bị trước mùa thiên tai, khuyến nghị dùng bản web cho số lượng lớn.'},
+ s14:{n:'14 · Duyệt báo cáo',fr:['FR-08.3','FR-03.4'],d:'Danh sách báo cáo luồng B chờ xác minh, sắp theo độ tin cậy. Bấm card mở màn chi tiết.',w:'Cross-reference: 2-3 báo cáo độc lập trong bán kính 200m trong 30 phút thì tự nâng mức ưu tiên.'},
+ s15:{n:'15 · Điểm sơ tán',fr:['FR-04.4'],d:'Bản đồ marker màu theo trạng thái + danh sách sức chứa. Bấm "Cập nhật tình trạng" mở màn 29.',w:'Sức chứa hiển thị SỐ TUYỆT ĐỐI "45/200 người", không dùng phần trăm.'},
+ s16:{n:'16 · Phát lệnh sơ tán',fr:['FR-04.2','FR-15'],d:'Ba bước: chọn khu vực trên bản đồ, chọn điểm sơ tán đích, soạn tin nhắn. Preview số hộ sẽ nhận.',w:'Bắt buộc có tuỳ chọn gửi kèm bản Tiếng Tày cho vùng Bình Liêu.'},
+ s25:{n:'25 · Nhập hộ dân thủ công',fr:['FR-05.4'],d:'Admin nhập thay hộ chưa có tài khoản app. Khi hộ tự đăng ký sau, hệ thống ghép theo số điện thoại.',w:''},
+ s26:{n:'26 · Xử lý trùng lặp',fr:['FR-05.5'],d:'So sánh hai cột dữ liệu đang có và dữ liệu file import, tô đỏ các trường khác nhau.',w:'Ba lựa chọn: giữ bản cũ, ghi đè, hoặc tạo hộ mới kèm sửa SĐT. Trùng SĐT thường là hai hộ khác nhau dùng nhầm số, không phải một hộ.'},
+ s27:{n:'27 · Chi tiết đội cứu hộ',fr:['FR-09.6','FR-10.8'],d:'Thông tin đội, vị trí GPS realtime, thống kê, và vật tư đang mang.',w:'Vật tư PHẢI phân biệt hai nguồn: hàng kho xã (trừ tồn kho khi phát) và hàng đội tự mang (không trừ, nhưng vẫn vào sổ cứu trợ).'},
+ s28:{n:'28 · Chi tiết báo cáo xác minh',fr:['FR-08.3','FR-03.2'],d:'Bản đồ 2 điểm cho thấy khoảng cách người báo tới hiện trường — yếu tố tin cậy quan trọng nhất.',w:'Hiển thị BREAKDOWN từng yếu tố điểm tin cậy thay vì chỉ tổng số, kèm hồ sơ độ chính xác của người báo. Ba hành động thay vì hai: duyệt, hỏi thêm, từ chối có lý do.'},
+ s29:{n:'29 · Điểm sơ tán + Check-in',fr:['FR-04.4','FR-07.3'],d:'Cập nhật số người, trạng thái điểm, vật tư tại chỗ và người phụ trách.',w:'Check-in hộ dân tự đặt safetyStatus = safe với source = evacuation_checkin, confidence 95. Đây là lời giải cho vấn đề hộ hết pin vẫn bị báo mất liên lạc.'},
+ s30:{n:'30 · Nhập kho',fr:['FR-10.1','FR-10.7'],d:'Hai chế độ: hàng trong danh mục chuẩn, hoặc gói hỗn hợp sinh mã GCT tự động.',w:'Nguyên tắc: tiếp nhận trước, phân loại sau. Không chặn luồng khẩn cấp vì phải phân loại từng món giữa lúc lũ đang lên.'},
+ s31:{n:'31 · Xuất kho cho đội',fr:['FR-10.2'],d:'Chọn đội, chọn hàng, sinh phiếu xuất có mã. Cảnh báo khi xuất khiến tồn kho xuống dưới ngưỡng.',w:'Chỉ đội có trạng thái available mới nên được chọn — tránh xuất hàng cho đội đang nghỉ.'},
+ s32:{n:'32 · Chi tiết gói cứu trợ',fr:['FR-10.7'],d:'Vòng đời received → classified → distributed. Từng dòng map được vào danh mục thì cộng tồn kho.',w:'Có thể phát nguyên gói khi chưa kịp phân loại — biên nhận ghi mã gói. Mọi món hàng đều truy vết được ai cho, ai nhận, khi nào.'},
+ s33:{n:'33 · Chi tiết nhật ký',fr:['FR-12.2'],d:'Ai, lúc nào, từ đâu, thay đổi gì dạng trước → sau, và chuỗi sự kiện của cùng vòng đời.',w:''},
+ s37:{n:'37 · Chuẩn bị lực lượng thường trực',fr:['FR-09.7'],d:'Khai báo đội biên chế xã trước mùa thiên tai. Khi có thiên tai chỉ cần kích hoạt 1 chạm.',w:'Tổng vật tư biên chế các đội được cộng vào "Tổng vật tư khả dụng" ở màn Leo thang — chỉ nhìn tồn kho xã sẽ dẫn tới xin thừa.'},
+ s38:{n:'38 · Tạo/sửa đội thường trực',fr:['FR-09.7'],d:'Thành viên, phương tiện, vật tư biên chế, khu vực phụ trách và mã QR cố định in nhãn được.',w:'standingEquipment khác broughtSupplies của đội vãng lai: đây là tài sản biên chế, luôn có mặt mọi đợt thiên tai.'},
+ s41:{n:'41 · Chi tiết hộ dân',fr:['FR-05.2','FR-07.3'],d:'Lịch sử trạng thái dạng timeline và sổ cứu trợ riêng của hộ, phục vụ kiểm tra trùng khi phát hàng.',w:'Nút "Đánh dấu an toàn" ghi source = admin_manual, confidence 70 — đây là nguồn xác nhận thứ tư trong năm nguồn.'},
+ s19:{n:'19 · Đăng ký MTQ',fr:['FR-09.2','FR-10.8'],d:'Form đăng ký từ xa cho đơn vị đến chi viện, gồm quân số, phương tiện và thời gian dự kiến đến.',w:'Mục "Vật tư mang theo" là bổ sung v1.1 — hàng này không trừ tồn kho xã khi phát nhưng vẫn phải vào sổ cứu trợ với nguồn team_brought.'},
+ s23:{n:'23 · Situation Board',fr:['FR-11'],d:'Trang công khai không cần đăng nhập. Bản đồ vùng ảnh hưởng, số liệu tổng hợp, nhu cầu cứu trợ, ảnh hiện trường.',w:'KHÔNG hiển thị toạ độ nhà, tên hay SĐT hộ dân. Mọi số liệu dùng số tuyệt đối, không dùng phần trăm.'},
+ s34:{n:'34 · Đổi trạng thái đội',fr:['FR-09.8'],d:'Năm trạng thái. Chọn "Tạm nghỉ" thì bắt buộc nhập lý do và giờ dự kiến quay lại.',w:'Đội nghỉ mà không báo khiến SOS bị treo — hệ thống vẫn đẩy, không ai nhận, đồng hồ leo thang vẫn chạy. Trạng thái offline do hệ thống tự đặt sau 30 phút không heartbeat.'},
+ s35:{n:'35 · Phát hàng + Biên nhận',fr:['FR-10.3','FR-10.5'],d:'Chọn hàng từ vật tư đội đang mang, sinh biên nhận điện tử có mã.',w:'Mỗi dòng ghi rõ nguồn. Cảnh báo trùng khi cùng hộ, cùng loại hàng trong vòng 24 giờ.'},
+ s36:{n:'36 · Xác nhận hộ an toàn',fr:['FR-07.3'],d:'Đội xác nhận tại hiện trường kèm ảnh, GPS và thời gian.',w:'Đây là nguồn tin cậy CAO NHẤT (100 điểm). Màn hiện rõ 4 field sẽ ghi vào hồ sơ hộ: status, source, verifiedBy, confidence.'},
+ s39:{n:'39 · Quét mã QR',fr:['FR-09.1'],d:'Một mã quét phục vụ cả hai loại đội. Có tuỳ chọn nhập mã thủ công khi camera không quét được.',w:'Cán bộ tại chốt không phải phân biệt trước đội nào thuộc loại nào — hệ thống tự nhận diện từ mã.'},
+ s40:{n:'40 · Kết quả quét QR',fr:['FR-09.1','FR-09.6'],d:'Phân nhánh theo loại mã: đội thường trực kích hoạt ngay, mã lạ mở form đăng ký.',w:'Đội thường trực kích hoạt 1 chạm KHÔNG cần duyệt, kèm tuỳ chọn chỉnh quân số thực tế hôm nay khác biên chế.'},
+ s20:{n:'20 · Danh sách nhiệm vụ',fr:['FR-09.3','FR-09.5'],d:'Bản đồ khu vực được gán + bottom sheet danh sách SOS. Bấm "Tôi đi" để khoá SOS.',w:'Trước khi nhận nhiệm vụ KHÔNG hiện tên, SĐT, địa chỉ cụ thể của hộ dân.'},
+ s21:{n:'21 · Chi tiết SOS',fr:['FR-09.5'],d:'Sau khi bấm "Tôi đi" mới mở khoá thông tin đầy đủ: tên, SĐT, địa chỉ chi tiết, ảnh hiện trường.',w:'Cảnh báo chướng ngại vật hiện cho mọi đội đi qua tuyến đó.'},
+ s22:{n:'22 · Báo cáo hoàn thành',fr:['FR-09.3','FR-07.3'],d:'Ảnh xác nhận bắt buộc tối thiểu 1 ảnh, kèm GPS và thời gian.',w:'Sau bước này sẽ dẫn sang màn Xác nhận hộ an toàn — ghi source = rescue_team, confidence = 100, là nguồn tin cậy cao nhất.'}
+};
+
+var ids = Object.keys(META), cur = 0;
+
+function show(i){
+  cur = (i + ids.length) % ids.length;
+  var id = ids[cur];
+  document.querySelectorAll('.scr').forEach(function(s){ s.classList.toggle('on', s.id === id); });
+  document.querySelectorAll('.nv').forEach(function(n){ n.classList.toggle('on', n.dataset.s === id); });
+  document.getElementById('pos').textContent = (cur+1) + ' / ' + ids.length;
+
+  var m = META[id];
+  var h = '<div class="sec"><div class="k">MÀN HÌNH</div><div class="v">' + m.n + '</div></div>';
+  h += '<div class="sec"><div class="k">YÊU CẦU CHỨC NĂNG</div><div>' + m.fr.map(function(f){return '<span class="fr">'+f+'</span>'}).join('') + '</div></div>';
+  h += '<div class="sec"><div class="k">MÔ TẢ</div><div class="p">' + m.d + '</div></div>';
+  if(m.w) h += '<div class="sec"><div class="k">QUYẾT ĐỊNH NGHIỆP VỤ</div><div class="warn">' + m.w + '</div></div>';
+  document.getElementById('ip').innerHTML = h;
+
+  var nav = document.querySelector('.nv.on');
+  if(nav) nav.scrollIntoView({block:'nearest'});
+}
+
+document.querySelectorAll('.nv').forEach(function(n){
+  n.onclick = function(){ show(ids.indexOf(n.dataset.s)); };
+});
+document.getElementById('prev').onclick = function(){ show(cur-1); };
+document.getElementById('next').onclick = function(){ show(cur+1); };
+document.onkeydown = function(e){
+  if(e.key === 'ArrowLeft') show(cur-1);
+  if(e.key === 'ArrowRight') show(cur+1);
+};
+show(0);
+</script>
+</body>
+</html>

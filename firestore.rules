@@ -1,0 +1,47 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Ràng buộc bảo mật cho Hộ dân (households)
+    match /households/{householdId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.ownerUid || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'rescueTeam'
+      );
+      allow write: if request.auth != null && request.auth.uid == request.resource.data.ownerUid;
+    }
+
+    // Ràng buộc bảo mật cho Yêu cầu cứu nạn SOS (sos_requests)
+    match /sos_requests/{sosId} {
+      allow read: if request.auth != null; // Cho phép đọc để hiển thị bản đồ tổng hợp
+      
+      // Tạo SOS: Chỉ Hộ dân tự tạo cho chính mình
+      allow create: if request.auth != null && request.resource.data.householdId != null;
+      
+      // Cập nhật SOS: Chỉ Admin điều phối hoặc Đội cứu hộ được gán mới có quyền thay đổi trạng thái
+      allow update: if request.auth != null && (
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'rescueTeam' && 
+         resource.data.assignedTeamId == request.auth.uid)
+      );
+    }
+
+    // Ràng buộc bảo mật cho Đội Cứu Hộ (rescue_teams)
+    match /rescue_teams/{teamId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (
+        request.auth.uid == teamId ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // Ràng buộc cho Nhật ký sự kiện (event_logs)
+    match /event_logs/{logId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if false; // Nhật ký bất biến
+    }
+  }
+}
