@@ -33,15 +33,21 @@ import '../../features/resident/presentation/screens/offline_sms_fallback_screen
 import '../../features/sos/presentation/screens/escalate_to_district_screen.dart';
 import '../../features/rescue_team/presentation/screens/volunteer_registration_screen.dart';
 
-import '../../features/auth/presentation/screens/role_selection_screen.dart';
+import 'package:flutter/material.dart';
+import '../../features/auth/presentation/screens/splash_screen.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/select-role', // Mở màn chọn vai trò đăng nhập khi mở app
+    initialLocation: '/splash', // Khởi động vào màn Loading Splash Screen s01
     routes: [
       GoRoute(
-        path: '/select-role',
-        builder: (context, state) => const RoleSelectionScreen(),
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
       ),
       GoRoute(
         path: '/resident',
