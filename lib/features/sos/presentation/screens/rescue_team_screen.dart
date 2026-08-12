@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../../core/widgets/map_widget.dart';
-import '../../../../core/widgets/role_switcher.dart';
+import '../../../../core/widgets/app_drawer.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../data/sos_sync_service.dart';
 import '../../../rescue_team/presentation/providers/rescue_team_provider.dart';
@@ -46,7 +46,7 @@ class _RescueTeamScreenState extends ConsumerState<RescueTeamScreen> {
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
-      drawer: const TestRoleSwitcherDrawer(),
+      drawer: const AppDrawer(),
       body: allTeamsAsync.when(
         data: (teams) {
           // Tìm document của đội cứu hộ hiện tại

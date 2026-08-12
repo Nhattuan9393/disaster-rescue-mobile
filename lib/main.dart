@@ -8,13 +8,16 @@ import 'core/services/hive_service.dart';
 import 'core/utils/logger.dart';
 import 'features/sos/data/sos_sync_service.dart';
 import 'features/report/data/report_sync_service.dart';
-
+import 'core/services/api_sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // DR-006: Khởi tạo Hive Offline Infrastructure
   await HiveService.init();
+
+  // Bắt đầu chạy ngầm đồng bộ hóa thời gian thực qua kvdb.io
+  ApiSyncService.startPolling();
 
   // DR-002, DR-004: Khởi tạo Firebase với cấu hình Dummy (Emulator)
   try {

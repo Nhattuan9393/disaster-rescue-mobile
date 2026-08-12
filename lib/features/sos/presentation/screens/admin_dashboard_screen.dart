@@ -5,7 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/widgets/map_widget.dart';
-import '../../../../core/widgets/role_switcher.dart';
+import '../../../../core/widgets/app_drawer.dart';
 import '../providers/sos_provider.dart';
 import '../../domain/sos_model.dart';
 import '../../domain/sos_status.dart';
@@ -56,7 +56,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
-      drawer: const TestRoleSwitcherDrawer(),
+      drawer: const AppDrawer(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentTab,
         selectedItemColor: const Color(0xFFD32F2F),

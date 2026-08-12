@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../../core/widgets/role_switcher.dart';
+import '../../../../core/widgets/app_drawer.dart';
 import '../../../../core/services/connectivity_service.dart';
 import '../../../household/domain/household_model.dart';
 import '../providers/sos_controller.dart';
@@ -103,7 +103,7 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      drawer: const TestRoleSwitcherDrawer(),
+      drawer: const AppDrawer(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
         selectedItemColor: const Color(0xFFD32F2F),
