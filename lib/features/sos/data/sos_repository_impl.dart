@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
@@ -23,8 +24,20 @@ class SosRepositoryImpl implements ISosRepository {
 
   @override
   Stream<List<SosRequestEntity>> watchSosRequests() {
-    return ApiSyncService.sosStream;
+    final controller = StreamController<List<SosRequestEntity>>();
+    controller.add(ApiSyncService.currentSosList);
+    final subscription = ApiSyncService.sosStream.listen((data) {
+      if (!controller.isClosed) {
+        controller.add(data);
+      }
+    });
+    controller.onCancel = () {
+      subscription.cancel();
+      controller.close();
+    };
+    return controller.stream;
   }
+
 
   @override
   Future<void> sendSosRequest(SosRequestEntity request) async {

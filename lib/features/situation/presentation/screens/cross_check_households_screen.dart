@@ -213,9 +213,11 @@ class _CrossCheckHouseholdsScreenState extends State<CrossCheckHouseholdsScreen>
               itemCount: filtered.length,
               itemBuilder: (context, index) {
                 final item = filtered[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
+                return GestureDetector(
+                  onTap: () => context.push('/household-detail-admin'),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
@@ -257,6 +259,7 @@ class _CrossCheckHouseholdsScreenState extends State<CrossCheckHouseholdsScreen>
                       ),
                     ],
                   ),
+                ),
                 );
               },
             ),

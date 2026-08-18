@@ -39,46 +39,44 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'dummy-api-key',
-    appId: '1:1234567890:web:abcdef1234567890',
-    messagingSenderId: '1234567890',
-    projectId: 'disaster-rescue-demo',
-    authDomain: 'disaster-rescue-demo.firebaseapp.com',
-    storageBucket: 'disaster-rescue-demo.appspot.com',
+    apiKey: 'AIzaSyAt7oZ4B4E7UPdsL3fe41N2sEGfzqIjaNs',
+    appId: '1:16257399137:web:1293ea3f02031cce5fad20',
+    messagingSenderId: '16257399137',
+    projectId: 'disaster-rescue-nhattuan9393',
+    authDomain: 'disaster-rescue-nhattuan9393.firebaseapp.com',
+    storageBucket: 'disaster-rescue-nhattuan9393.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'dummy-api-key',
-    appId: '1:1234567890:android:abcdef1234567890',
-    messagingSenderId: '1234567890',
-    projectId: 'disaster-rescue-demo',
-    storageBucket: 'disaster-rescue-demo.appspot.com',
+    apiKey: 'AIzaSyD-nsfLbsGtym6VGg54MFovGV_OCy0HNHY',
+    appId: '1:16257399137:android:37fca9f8172ef99e5fad20',
+    messagingSenderId: '16257399137',
+    projectId: 'disaster-rescue-nhattuan9393',
+    storageBucket: 'disaster-rescue-nhattuan9393.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'dummy-api-key',
-    appId: '1:1234567890:ios:abcdef1234567890',
-    messagingSenderId: '1234567890',
-    projectId: 'disaster-rescue-demo',
-    storageBucket: 'disaster-rescue-demo.appspot.com',
-    iosBundleId: 'com.disasterrescue.app',
+    apiKey: 'AIzaSyAsjL7ntxLveo0ymcnVO69Zymoxu5bqJ_Y',
+    appId: '1:16257399137:ios:61c2889c18b43bc45fad20',
+    messagingSenderId: '16257399137',
+    projectId: 'disaster-rescue-nhattuan9393',
+    storageBucket: 'disaster-rescue-nhattuan9393.firebasestorage.app',
+    iosBundleId: 'com.disasterrescue.disasterRescue',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'dummy-api-key',
-    appId: '1:1234567890:ios:abcdef1234567890',
-    messagingSenderId: '1234567890',
-    projectId: 'disaster-rescue-demo',
-    storageBucket: 'disaster-rescue-demo.appspot.com',
-    iosBundleId: 'com.disasterrescue.app',
+    apiKey: 'AIzaSyAsjL7ntxLveo0ymcnVO69Zymoxu5bqJ_Y',
+    appId: '1:16257399137:ios:61c2889c18b43bc45fad20',
+    messagingSenderId: '16257399137',
+    projectId: 'disaster-rescue-nhattuan9393',
+    storageBucket: 'disaster-rescue-nhattuan9393.firebasestorage.app',
+    iosBundleId: 'com.disasterrescue.disasterRescue',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'dummy-api-key',
-    appId: '1:1234567890:web:abcdef1234567890',
-    messagingSenderId: '1234567890',
-    projectId: 'disaster-rescue-demo',
-    authDomain: 'disaster-rescue-demo.firebaseapp.com',
-    storageBucket: 'disaster-rescue-demo.appspot.com',
+    apiKey: 'AIzaSyAt7oZ4B4E7UPdsL3fe41N2sEGfzqIjaNs',
+    appId: '1:16257399137:web:f73c1d96cc1bd13d5fad20',
+    messagingSenderId: '16257399137',
+    projectId: 'disaster-rescue-nhattuan9393',
+    authDomain: 'disaster-rescue-nhattuan9393.firebaseapp.com',
+    storageBucket: 'disaster-rescue-nhattuan9393.firebasestorage.app',
   );
 }

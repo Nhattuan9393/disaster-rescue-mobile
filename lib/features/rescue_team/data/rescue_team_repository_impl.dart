@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/i_rescue_team_repository.dart';
 import '../domain/rescue_team_model.dart';
@@ -15,8 +16,20 @@ class RescueTeamRepositoryImpl implements IRescueTeamRepository {
 
   @override
   Stream<List<RescueTeamModel>> watchAllTeams() {
-    return ApiSyncService.teamsStream;
+    final controller = StreamController<List<RescueTeamModel>>();
+    controller.add(ApiSyncService.currentTeams);
+    final subscription = ApiSyncService.teamsStream.listen((data) {
+      if (!controller.isClosed) {
+        controller.add(data);
+      }
+    });
+    controller.onCancel = () {
+      subscription.cancel();
+      controller.close();
+    };
+    return controller.stream;
   }
+
 
   @override
   Future<void> saveRescueTeam(RescueTeamModel team) async {

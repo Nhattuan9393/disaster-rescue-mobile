@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+
 import 'package:flutter_map/flutter_map.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/widgets/map_widget.dart';
@@ -40,51 +42,99 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     final availableTeamsAsync = ref.watch(availableRescueTeamsProvider);
     final allTeamsAsync = ref.watch(allRescueTeamsStreamProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FB),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87),
-            onPressed: () => Scaffold.of(context).openDrawer(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.exit_to_app, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Thoát ứng dụng', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: const Text('Bạn có chắc chắn muốn thoát khỏi ứng dụng DisasterRescue?', style: TextStyle(fontSize: 12)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade800),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Thoát', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF9F9FB),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0.5,
+          leading: Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu, color: Colors.black87),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          ),
+          title: const Text(
+            'Admin Xã — Ban Chỉ Huy',
+            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ),
-        title: const Text(
-          'Admin Xã — Ban Chỉ Huy',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
+        drawer: const AppDrawer(),
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: 0, // Màn hình này luôn hiển thị Bản đồ nền
+          selectedItemColor: const Color(0xFFD32F2F),
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          unselectedLabelStyle: const TextStyle(fontSize: 11),
+          onTap: (index) {
+            if (index == 0) return;
+            switch (index) {
+              case 1:
+                context.push('/cross-check');
+                break;
+              case 2:
+                context.push('/rescue-teams');
+                break;
+              case 3:
+                context.push('/warehouse');
+                break;
+              case 4:
+                context.push('/event-logs');
+                break;
+            }
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Bản đồ'),
+            BottomNavigationBarItem(icon: Icon(Icons.compare_arrows), label: 'Đối chiếu'),
+            BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Lực lượng'),
+            BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'Kho'),
+            BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Leo thang & NK'),
+          ],
         ),
-      ),
-      drawer: const AppDrawer(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentTab,
-        selectedItemColor: const Color(0xFFD32F2F),
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontSize: 11),
-        onTap: (index) {
-          setState(() {
-            _currentTab = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Bản đồ'),
-          BottomNavigationBarItem(icon: Icon(Icons.compare_arrows), label: 'Đối chiếu'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Lực lượng'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2), label: 'Kho'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Nhật ký'),
-        ],
-      ),
-      body: _buildTabContent(
-        sosRequestsAsync,
-        markersAsync,
-        availableTeamsAsync,
-        allTeamsAsync,
+        body: _buildMapTab(
+          sosRequestsAsync,
+          markersAsync,
+          availableTeamsAsync,
+        ),
       ),
     );
   }
+
 
   Widget _buildTabContent(
     AsyncValue<List<SosRequestEntity>> sosRequestsAsync,
@@ -265,6 +315,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                 });
                                 _showAssignBottomSheet(context, availableTeamsAsync);
                               },
+                              onLongPress: () => context.push('/household-detail-admin'),
                               child: Container(
                                 margin: const EdgeInsets.only(right: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -285,10 +336,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                       'Điểm: ${sos.priorityScore}',
                                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
                                     ),
+                                    const SizedBox(height: 2),
+                                    GestureDetector(
+                                      onTap: () => context.push('/household-detail-admin'),
+                                      child: const Text('👤 Xem hộ dân', style: TextStyle(fontSize: 10, color: Colors.blue, decoration: TextDecoration.underline)),
+                                    ),
                                   ],
                                 ),
                               ),
                             );
+
                           },
                         ),
                       )

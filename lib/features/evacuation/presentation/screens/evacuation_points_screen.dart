@@ -49,6 +49,42 @@ class EvacuationPointsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final pointsAsync = ref.watch(allEvacuationPointsProvider);
 
+    // Dữ liệu fallback mặc định khi Firestore offline hoặc rỗng
+    final fallbackPoints = [
+      const EvacuationPointModel(
+        id: 'evac_01', name: 'Trường TH Bình Liêu',
+        latitude: 21.5430, longitude: 107.3990,
+        capacity: 200, currentCount: 45, status: 'open',
+        supplies: ['Chăn', 'Nước', 'Lương khô', 'Thuốc'],
+        inChargeName: 'Cô Vũ Thị Lan', inChargePhone: '0203 456 789',
+        checkedInHouseholdIds: [],
+      ),
+      const EvacuationPointModel(
+        id: 'evac_02', name: 'Nhà văn hóa Thôn Pắc Liềng',
+        latitude: 21.5450, longitude: 107.4020,
+        capacity: 120, currentCount: 118, status: 'nearly_full',
+        supplies: ['Nước', 'Thuốc'],
+        inChargeName: 'Bác Nông Văn Sang', inChargePhone: '0203 987 654',
+        checkedInHouseholdIds: [],
+      ),
+      const EvacuationPointModel(
+        id: 'evac_03', name: 'UBND xã Bình Liêu',
+        latitude: 21.5410, longitude: 107.3950,
+        capacity: 150, currentCount: 150, status: 'full',
+        supplies: ['Chăn', 'Nước', 'Lương khô'],
+        inChargeName: 'Trần Văn Bình', inChargePhone: '0203 123 456',
+        checkedInHouseholdIds: [],
+      ),
+      const EvacuationPointModel(
+        id: 'evac_04', name: 'Trạm Y tế Khe Tiền',
+        latitude: 21.5380, longitude: 107.3900,
+        capacity: 60, currentCount: 0, status: 'closed',
+        supplies: [],
+        inChargeName: 'Y sĩ Hoàng Thị Mơ', inChargePhone: '0203 333 999',
+        checkedInHouseholdIds: [],
+      ),
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -80,7 +116,9 @@ class EvacuationPointsScreen extends ConsumerWidget {
             : null,
       ),
       body: pointsAsync.when(
-        data: (points) {
+        data: (rawPoints) {
+          // Fallback: n\u1ebfu Firestore offline/r\u1ed7ng, d\u00f9ng d\u1eef li\u1ec7u m\u1eb7c \u0111\u1ecbnh
+          final points = rawPoints.isEmpty ? fallbackPoints : rawPoints;
           final markers = points.map((p) {
             final color = _getStatusColor(p.status);
             return Marker(
@@ -98,12 +136,14 @@ class EvacuationPointsScreen extends ConsumerWidget {
             );
           }).toList();
 
+
           return Column(
             children: [
-              // A. Khung bản đồ cắm mốc điểm sơ tán phía trên (170px)
+              // A. Khung bản đồ cắm mốc điểm sơ tán phía trên (350px)
               SizedBox(
-                height: 170,
+                height: 350,
                 child: CoreMapWidget(
+
                   center: _defaultCenter,
                   zoom: 13,
                   markers: markers,

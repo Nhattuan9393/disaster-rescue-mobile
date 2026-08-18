@@ -4,7 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/sos/presentation/screens/resident_sos_screen.dart';
 import '../../features/sos/presentation/screens/admin_dashboard_screen.dart';
 import '../../features/sos/presentation/screens/rescue_team_screen.dart';
+import '../../features/sos/presentation/screens/rescue_sos_detail_screen.dart';
+import '../../features/sos/presentation/screens/rescue_delivery_receipt_screen.dart';
+import '../../features/sos/presentation/screens/rescue_completion_report_screen.dart';
 import '../../features/report/presentation/screens/report_screen.dart';
+
 import '../../features/report/presentation/screens/assistance_request_screen.dart';
 import '../../features/report/presentation/screens/verify_reports_screen.dart';
 import '../../features/report/presentation/screens/report_detail_screen.dart';
@@ -22,6 +26,9 @@ import '../../features/situation/presentation/screens/situation_board_screen.dar
 import '../../features/rescue_team/presentation/screens/rescue_teams_management_screen.dart';
 import '../../features/logistics/presentation/screens/warehouse_management_screen.dart';
 import '../../features/logistics/presentation/screens/dispatch_supplies_screen.dart';
+import '../../features/logistics/presentation/screens/receive_donations_screen.dart';
+import '../../features/logistics/presentation/screens/donation_package_detail_screen.dart';
+
 import '../../features/logistics/presentation/screens/event_logs_screen.dart';
 
 import '../../features/resident/presentation/screens/bulk_import_residents_screen.dart';
@@ -34,8 +41,13 @@ import '../../features/resident/presentation/screens/admin_households_list_scree
 import '../../features/resident/presentation/screens/offline_sms_fallback_screen.dart';
 import '../../features/sos/presentation/screens/escalate_to_district_screen.dart';
 import '../../features/rescue_team/presentation/screens/volunteer_registration_screen.dart';
+import '../../features/rescue_team/presentation/screens/permanent_forces_screen.dart';
+import '../../features/rescue_team/presentation/screens/rescue_team_detail_admin_screen.dart';
+import '../../features/resident/presentation/screens/household_detail_admin_screen.dart';
 
 import '../../features/auth/presentation/screens/splash_screen.dart';
+
+
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_household_screen.dart';
 import '../../features/auth/presentation/screens/role_selection_screen.dart';
@@ -70,8 +82,33 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/rescue',
-        builder: (context, state) => const RescueTeamScreen(),
+        builder: (context, state) {
+          final type = state.uri.queryParameters['type'] ?? 'permanent';
+          return RescueTeamScreen(teamType: type);
+        },
       ),
+      GoRoute(
+        path: '/rescue-sos-detail',
+        builder: (context, state) {
+          final sosId = state.uri.queryParameters['sosId'] ?? '';
+          return RescueSosDetailScreen(sosId: sosId);
+        },
+      ),
+      GoRoute(
+        path: '/rescue-delivery',
+        builder: (context, state) {
+          final sosId = state.uri.queryParameters['sosId'] ?? '';
+          return RescueDeliveryReceiptScreen(sosId: sosId);
+        },
+      ),
+      GoRoute(
+        path: '/rescue-completion',
+        builder: (context, state) {
+          final sosId = state.uri.queryParameters['sosId'] ?? '';
+          return RescueCompletionReportScreen(sosId: sosId);
+        },
+      ),
+
       GoRoute(
         path: '/report',
         builder: (context, state) {
@@ -137,11 +174,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/dispatch-supplies',
-        builder: (context, state) {
-          final isImport = state.uri.queryParameters['mode'] == 'import';
-          return DispatchSuppliesScreen(isImportMode: isImport);
-        },
+        builder: (context, state) => const DispatchSuppliesScreen(),
       ),
+      GoRoute(
+        path: '/receive-donations',
+        builder: (context, state) => const ReceiveDonationsScreen(),
+      ),
+      GoRoute(
+        path: '/donation-package-detail',
+        builder: (context, state) => const DonationPackageDetailScreen(),
+      ),
+
       GoRoute(
         path: '/event-logs',
         builder: (context, state) => const EventLogsScreen(),
@@ -181,6 +224,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/volunteer-register',
         builder: (context, state) => const VolunteerRegistrationScreen(),
+      ),
+      GoRoute(
+        path: '/permanent-forces',
+        builder: (context, state) => const PermanentForcesScreen(),
+      ),
+      GoRoute(
+        path: '/household-detail-admin',
+        builder: (context, state) => const HouseholdDetailAdminScreen(),
+      ),
+      GoRoute(
+        path: '/rescue-team-detail-admin',
+        builder: (context, state) => const RescueTeamDetailAdminScreen(),
       ),
     ],
   );

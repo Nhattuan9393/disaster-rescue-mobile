@@ -21,28 +21,132 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _submitLogin() {
     final input = _usernameCtrl.text.trim().toLowerCase();
+    final password = _passwordCtrl.text;
 
-    // Logic Phân Quyền Vai Trò Theo Prototype s02/s03:
-    if (input == 'admin' || input == '0912111222') {
-      // 1 vai trò: Admin Xã -> Vào thẳng Dashboard Admin
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('🏛️ Đăng nhập thành công Admin Ban Chỉ Huy Xã!'), backgroundColor: Colors.blue.shade900),
-      );
-      context.go('/admin');
-    } else if (input == 'truongthon' || input == '0987654321' || input.contains('nha')) {
-      // >= 2 vai trò: Trưởng thôn (Hộ dân + Admin phụ + Dân quân) -> Mở màn 03 Chọn vai trò
-      context.push('/select-role');
-    } else if (input == 'dq01' || input.contains('cuuho')) {
-      // 1 vai trò: Đội Cứu Hộ Thường Trực -> Vào thẳng màn Đội cứu hộ
+    // Kiểm tra tài khoản mẫu thường trực & vãng lai
+    if (input == 'tt1' && password == '12345') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: const Text('⛑️ Đăng nhập thành công Đội Cứu Hộ Thường Trực!'), backgroundColor: Colors.green.shade800),
       );
-      context.go('/rescue');
-    } else {
-      // 1 vai trò: Hộ Dân -> Vào thẳng Trang chủ Hộ Dân
-      context.go('/resident');
+      context.go('/rescue?type=permanent');
+      return;
     }
+    
+    if (input == 'vl1' && password == '12345') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('⛑️ Đăng nhập thành công Đội Cứu Hộ Vãng Lai / Tình Nguyện!'), backgroundColor: Colors.orange.shade800),
+      );
+      context.go('/rescue?type=volunteer');
+      return;
+    }
+
+    // Logic Phân Quyền Vai Trò Theo Prototype s02/s03 (Đăng nhập đúng pass mặc định 123456):
+    if (password == '123456') {
+      if (input == 'admin' || input == '0912111222') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('🏛️ Đăng nhập thành công Admin Ban Chỉ Huy Xã!'), backgroundColor: Colors.blue.shade900),
+        );
+        context.go('/admin');
+        return;
+      } else if (input == 'truongthon' || input == '0987654321' || input.contains('nha')) {
+        context.push('/select-role');
+        return;
+      } else if (input == 'dq01' || input.contains('cuuho')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: const Text('⛑️ Đăng nhập thành công Đội Cứu Hộ Thường Trực!'), backgroundColor: Colors.green.shade800),
+        );
+        context.go('/rescue?type=permanent');
+        return;
+      } else if (input == '0987 654 321') {
+        context.go('/resident');
+        return;
+      }
+    }
+
+    // Nếu thông tin đăng nhập sai -> Hiển thị Dialog gợi ý đăng ký tài khoản mới
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Đăng nhập thất bại', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text(
+          'Mật khẩu không khớp hoặc tài khoản không tồn tại. Bạn chưa có tài khoản hoặc muốn đăng ký tài khoản mới?',
+          style: TextStyle(fontSize: 12),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.push('/register-household');
+            },
+            child: const Text('Đăng ký Hộ dân', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.push('/volunteer-register');
+            },
+            child: const Text('Đăng ký Cứu hộ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Thử lại', style: TextStyle(color: Colors.grey)),
+          ),
+        ],
+      ),
+    );
   }
+
+  void _showForgotPasswordDialog() {
+    final emailCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('🔑 Khôi phục mật khẩu', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Nhập số điện thoại hoặc email đăng ký để nhận mã khôi phục:', style: TextStyle(fontSize: 11.5)),
+            const SizedBox(height: 10),
+            TextField(
+              controller: emailCtrl,
+              decoration: InputDecoration(
+                hintText: 'SĐT hoặc Email',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              ),
+              style: const TextStyle(fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD32F2F)),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('✅ Đã gửi mã xác minh khôi phục mật khẩu. Vui lòng kiểm tra SMS/Email!'), backgroundColor: Colors.green),
+              );
+            },
+            child: const Text('Gửi mã', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   void _showMtqQrPopup() {
     showDialog(
@@ -296,6 +400,21 @@ class _LoginScreenState extends State<LoginScreen> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                       ),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        GestureDetector(
+                          onTap: _showForgotPasswordDialog,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 6),
+                            child: Text(
+                              'Quên mật khẩu?',
+                              style: TextStyle(color: Colors.blue.shade800, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

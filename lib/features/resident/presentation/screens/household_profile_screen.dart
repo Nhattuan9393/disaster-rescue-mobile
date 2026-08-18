@@ -72,18 +72,23 @@ class HouseholdProfileScreen extends StatelessWidget {
                   'DANH SÁCH NHÂN KHẨU (5 NGƯỜI)',
                   style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 11),
                 ),
-                TextButton.icon(
-                  onPressed: () => context.push('/members-safety'),
-                  icon: const Icon(Icons.check_circle, size: 16, color: Colors.green),
-                  label: const Text('Điểm danh an toàn', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    const Icon(Icons.check_circle, size: 15, color: Colors.green),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Điểm danh an toàn',
+                      style: TextStyle(color: Colors.red.shade800, fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 10),
 
             _buildMemberCard('Nguyễn Văn A', '1948 (78 tuổi)', 'Nam', 'Chủ hộ · 👴 Người già'),
             _buildMemberCard('Trần Thị B', '1951 (75 tuổi)', 'Nữ', 'Vợ · 👵 Người già'),
-            _buildMemberCard('Nguyễn Văn C', '1980 (46 tuổi)', 'Nam', 'Con trai · 👨 Lao động chính'),
+            _buildMemberCard('Nguyễn Văn C', '1980 (46 tuổi)', 'Nam', 'Con trai · 👦 Lao động chính'),
             _buildMemberCard('Lê Thị D', '1983 (43 tuổi)', 'Nữ', 'Con dâu'),
             _buildMemberCard('Nguyễn Văn E', '2021 (5 tuổi)', 'Nam', 'Cháu nội · 👶 Trẻ em nhỏ'),
           ],
@@ -94,31 +99,50 @@ class HouseholdProfileScreen extends StatelessWidget {
 
   Widget _buildMemberCard(String name, String year, String gender, String role) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE0E0E0), width: 0.8),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.black87)),
-              const SizedBox(height: 2),
-              Text('$year · Giới tính: $gender', style: const TextStyle(color: Colors.grey, fontSize: 11)),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$year · Giới tính: $gender',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5),
+                ),
+              ],
+            ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
-            child: Text(role, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5, color: Colors.black87)),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              role,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+                color: Colors.black87,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
+
 }

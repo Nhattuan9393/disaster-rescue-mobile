@@ -1,0 +1,31 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "disaster-rescue-nhattuan9393",
+          "appId": "1:16257399137:android:37fca9f8172ef99e5fad20",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "disaster-rescue-nhattuan9393",
+          "configurations": {
+            "android": "1:16257399137:android:37fca9f8172ef99e5fad20",
+            "ios": "1:16257399137:ios:61c2889c18b43bc45fad20",
+            "macos": "1:16257399137:ios:61c2889c18b43bc45fad20",
+            "web": "1:16257399137:web:1293ea3f02031cce5fad20",
+            "windows": "1:16257399137:web:f73c1d96cc1bd13d5fad20"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "asia-southeast3",
+    "rules": "firebase deploy --only firestore:rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

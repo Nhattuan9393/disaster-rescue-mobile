@@ -1,12 +1,15 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hive/hive.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../core/services/hive_service.dart';
+import '../../../core/services/api_sync_service.dart';
 import '../../../core/utils/logger.dart';
 import '../domain/assistance_request_model.dart';
 import '../domain/situation_report_model.dart';
 import '../domain/i_report_repository.dart';
+
 
 class ReportRepositoryImpl implements IReportRepository {
   final FirebaseFirestore _firestore;
@@ -54,8 +57,13 @@ class ReportRepositoryImpl implements IReportRepository {
           'actorId': request.reporterId,
           'timestamp': DateTime.now().toIso8601String(),
         });
+
+        // Đồng bộ hóa sang các máy khác qua kvdb
+        ApiSyncService.addOrUpdateLocalReport(request);
       } catch (e) {
         AppLogger.w('Đã ghi nhận dữ liệu đệm local. Hoàn tất phản hồi UI ngay.');
+        // Vẫn đồng bộ sang các máy khác ngay cả khi Firestore thất bại
+        ApiSyncService.addOrUpdateLocalReport(request);
       }
     }
   }
@@ -98,17 +106,20 @@ class ReportRepositoryImpl implements IReportRepository {
 
   @override
   Stream<List<AssistanceRequestModel>> watchAssistanceRequests() {
-    return _assistanceCollection
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return AssistanceRequestModel.fromJson(data);
-      }).toList();
+    final controller = StreamController<List<AssistanceRequestModel>>();
+    controller.add(ApiSyncService.currentReports);
+    final subscription = ApiSyncService.reportsStream.listen((data) {
+      if (!controller.isClosed) {
+        controller.add(data);
+      }
     });
+    controller.onCancel = () {
+      subscription.cancel();
+      controller.close();
+    };
+    return controller.stream;
   }
+
 
   @override
   Stream<List<SituationReportModel>> watchSituationReports() {
@@ -127,23 +138,25 @@ class ReportRepositoryImpl implements IReportRepository {
   @override
   Future<void> updateAssistanceRequestStatus(String id, String status) async {
     AppLogger.i('Cập nhật trạng thái yêu cầu hỗ trợ $id thành: $status');
-    await _assistanceCollection.doc(id).update({
-      'status': status,
-    });
+    // Đồng bộ realtime sang các máy khác qua kvdb ngay lập tức
+    ApiSyncService.updateReportStatus(id, status);
+    // Ghi lên Firestore song song (fire-and-forget)
+    _assistanceCollection.doc(id).update({'status': status}).catchError((_) {});
   }
 
   @override
   Future<void> approveAndCreateSos(AssistanceRequestModel request) async {
     AppLogger.i('Duyệt tin báo ${request.id} -> Tự động tạo ca cứu hộ SOS mới');
-    
-    // 1. Cập nhật trạng thái báo cáo thành đã duyệt (verified)
-    await _assistanceCollection.doc(request.id).update({
-      'status': 'verified',
-    });
 
-    // 2. Tạo tài liệu SOS mới trong sos_requests
+    // 1. Cập nhật trạng thái sang các máy khác qua kvdb ngay lập tức
+    ApiSyncService.updateReportStatus(request.id, 'verified');
+
+    // 2. Ghi lên Firestore (fire-and-forget)
+    _assistanceCollection.doc(request.id).update({'status': 'verified'}).catchError((_) {});
+
+    // 3. Tạo tài liệu SOS mới trong sos_requests
     final sosId = 'SOS-${request.id.length >= 6 ? request.id.substring(0, 6).toUpperCase() : request.id.toUpperCase()}';
-    await _firestore.collection('sos_requests').doc(sosId).set({
+    _firestore.collection('sos_requests').doc(sosId).set({
       'id': sosId,
       'householdId': request.householdId,
       'latitude': request.latitude,
@@ -152,9 +165,9 @@ class ReportRepositoryImpl implements IReportRepository {
       'status': 'pending',
       'timestamp': DateTime.now().toIso8601String(),
       'note': 'Được tạo tự động từ Tin Báo Flow B (Admin đã xác minh): ${request.description}',
-    });
+    }).catchError((_) {});
 
-    // 3. Ghi log sự kiện
+    // 4. Ghi log sự kiện
     await _firestore.collection('event_logs').add({
       'id': request.id,
       'sosId': sosId,
