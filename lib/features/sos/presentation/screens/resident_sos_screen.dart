@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/widgets/app_drawer.dart';
 import '../../../../core/services/connectivity_service.dart';
+import '../../../../core/services/gps_service.dart';
+import '../../../../core/utils/logger.dart';
 import '../../../household/domain/household_model.dart';
 import '../providers/sos_controller.dart';
 import '../providers/sos_provider.dart';
@@ -40,6 +42,24 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
     headName: 'Nguyễn Văn Tuấn',
     contactPhone: '0987654321',
   );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _preFetchLocation();
+    });
+  }
+
+  Future<void> _preFetchLocation() async {
+    try {
+      AppLogger.i('Khởi động trước định vị GPS để tránh thời gian chết...');
+      final gpsService = ref.read(gpsServiceProvider);
+      await gpsService.getCurrentLocation();
+    } catch (e) {
+      AppLogger.w('Pre-fetch GPS failed: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -516,36 +536,70 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                       Expanded(
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onTap: () async {
-                            try {
-                              // Hiển thị thông báo phản hồi tức thì
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('✅ Đã báo cho xã: Hộ gia đình của bạn vẫn an toàn!'),
-                                    backgroundColor: Colors.green,
-                                    duration: Duration(seconds: 2),
+                          onTap: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                title: Row(
+                                  children: const [
+                                    Icon(Icons.check_circle, color: Colors.green, size: 24),
+                                    SizedBox(width: 8),
+                                    Text('Báo Cáo An Toàn', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                content: const Text(
+                                  'Xác nhận bạn và gia đình vẫn an toàn? Hệ thống sẽ gửi báo cáo trạng thái an toàn lên Ban chỉ huy xã.',
+                                  style: TextStyle(fontSize: 13, height: 1.4),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('HỦY BỎ', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
                                   ),
-                                );
-                              }
-                              await FirebaseFirestore.instance.collection('safety_confirmations').add({
-                                'householdId': 'household_my_family',
-                                'status': 'safe',
-                                'source': 'resident_proactive',
-                                'confidence': 100,
-                                'timestamp': DateTime.now().toIso8601String(),
-                              });
-                              await FirebaseFirestore.instance.collection('households').doc('household_my_family').set({
-                                'safetyStatus': 'safe',
-                                'lastConfirmed': DateTime.now().toIso8601String(),
-                              }, SetOptions(merge: true));
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Lỗi kết nối: ${e.toString()}'), backgroundColor: Colors.red),
-                                );
-                              }
-                            }
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+                                      try {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).clearSnackBars();
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('✅ Đã báo cho xã: Hộ gia đình của bạn vẫn an toàn!'),
+                                              backgroundColor: Colors.green,
+                                              behavior: SnackBarBehavior.floating,
+                                              duration: Duration(seconds: 2),
+                                            ),
+                                          );
+                                        }
+                                        await FirebaseFirestore.instance.collection('safety_confirmations').add({
+                                          'householdId': 'household_my_family',
+                                          'status': 'safe',
+                                          'source': 'resident_proactive',
+                                          'confidence': 100,
+                                          'timestamp': DateTime.now().toIso8601String(),
+                                        });
+                                        await FirebaseFirestore.instance.collection('households').doc('household_my_family').set({
+                                          'safetyStatus': 'safe',
+                                          'lastConfirmed': DateTime.now().toIso8601String(),
+                                        }, SetOptions(merge: true));
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text('Lỗi kết nối: ${e.toString()}'), backgroundColor: Colors.red),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: const Text('XÁC NHẬN', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  ),
+                                ],
+                              ),
+                            );
                           },
                           child: Container(
                             height: 100,

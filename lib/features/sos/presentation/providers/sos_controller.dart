@@ -74,12 +74,26 @@ class SosController extends StateNotifier<SosState> {
     );
 
     try {
-      // DR-021: Lấy GPS (có tự động fallback lấy Cache nếu không có quyền)
-      final gpsService = _ref.read(gpsServiceProvider);
-      final location = await gpsService.getCurrentLocation();
+      double lat = household.latitude;
+      double lng = household.longitude;
+      bool isFallback = false;
 
-      if (location == null) {
-        throw Exception('Không thể lấy vị trí GPS hiện tại. Vui lòng kiểm tra định vị (GPS) đã bật và cấp quyền vị trí cho ứng dụng chưa.');
+      // DR-021: Lấy GPS (có tự động fallback lấy Cache nếu không có quyền), giới hạn 1.5s tránh thời gian chết
+      final gpsService = _ref.read(gpsServiceProvider);
+      final location = await gpsService.getCurrentLocation().timeout(
+        const Duration(milliseconds: 1500),
+        onTimeout: () {
+          AppLogger.w('Quá thời gian 1.5s lấy GPS, chuyển sang tọa độ dự phòng');
+          return null;
+        },
+      );
+
+      if (location != null) {
+        lat = location.latitude;
+        lng = location.longitude;
+      } else {
+        isFallback = true;
+        AppLogger.w('Không lấy được GPS trực tiếp, sử dụng tọa độ nhà đăng ký làm phương án dự phòng');
       }
 
       // DR-017: Tính điểm ưu tiên (Priority Score)
@@ -96,8 +110,8 @@ class SosController extends StateNotifier<SosState> {
       final sosRequest = SosRequestEntity(
         id: const Uuid().v4(),
         householdId: household.id,
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: lat,
+        longitude: lng,
         createdAt: now,
         status: SosStatus.pending,
         priorityScore: priority,
@@ -107,11 +121,18 @@ class SosController extends StateNotifier<SosState> {
       final repo = _ref.read(sosRepositoryProvider);
       await repo.sendSosRequest(sosRequest);
 
+      String msg = '';
+      if (isFallback) {
+        msg = 'Gửi SOS thành công với vị trí nhà đăng ký (Do chưa định vị được thiết bị)!';
+      } else {
+        msg = isOnline 
+            ? 'Đã gửi tín hiệu SOS khẩn cấp thành công!' 
+            : 'Đã lưu SOS vào hàng đợi. Sẽ gửi tự động khi có mạng!';
+      }
+
       state = state.copyWith(
         isLoading: false,
-        successMessage: isOnline 
-            ? 'Đã gửi tín hiệu SOS khẩn cấp thành công!' 
-            : 'Đã lưu SOS vào hàng đợi. Sẽ gửi tự động khi có mạng!',
+        successMessage: msg,
       );
 
     } catch (e, stack) {

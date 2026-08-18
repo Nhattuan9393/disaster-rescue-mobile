@@ -57,8 +57,11 @@ class _AssistanceRequestScreenState extends ConsumerState<AssistanceRequestScree
           };
         }).toList();
         
+        final dynamicIds = dynamicPoints.map((e) => e['id'] as String).toSet();
+        final uniqueDefault = _defaultEvacPoints.where((e) => !dynamicIds.contains(e['id'])).toList();
+
         setState(() {
-          _evacPoints = [..._defaultEvacPoints, ...dynamicPoints];
+          _evacPoints = [...uniqueDefault, ...dynamicPoints];
         });
       }
     } catch (_) {}

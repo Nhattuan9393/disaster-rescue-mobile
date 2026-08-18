@@ -546,12 +546,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   ),
                 )),
             GestureDetector(
-              onTap: () {
-                // Giả lập thêm ảnh
-                setState(() {
-                  _selectedPhotos.add('photo_${_selectedPhotos.length + 1}');
-                });
-              },
+              onTap: _showPhotoSourceDialog,
               child: Container(
                 width: 56,
                 height: 56,
@@ -602,6 +597,95 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  void _showPhotoSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xFFD32F2F)),
+                title: const Text('Ghi hình trực tiếp (Máy ảnh)', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _requestPermissionAndCapture('camera');
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.blue),
+                title: const Text('Chọn ảnh từ thư viện (Gallery)', style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _requestPermissionAndCapture('gallery');
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _requestPermissionAndCapture(String source) {
+    final title = source == 'camera'
+        ? 'Cho phép DisasterRescue chụp ảnh và ghi video?'
+        : 'Cho phép DisasterRescue truy cập vào ảnh và phương tiện?';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          content: Text(
+            source == 'camera'
+                ? 'Ứng dụng cần quyền sử dụng camera để chụp ảnh thực tế tại hiện trường thiên tai.'
+                : 'Ứng dụng cần quyền truy cập album để bạn chọn ảnh đính kèm báo cáo thiên tai.',
+            style: const TextStyle(fontSize: 13, height: 1.3),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('❌ Quyền truy cập bị từ chối. Vui lòng cấp quyền trong Cài đặt.'),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Text('TỪ CHỐI', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  _selectedPhotos.add('photo_${_selectedPhotos.length + 1}');
+                });
+                ScaffoldMessenger.of(context).clearSnackBars();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(source == 'camera' ? '📷 Đã chụp ảnh thành công!' : '🖼️ Đã chọn ảnh thành công!'),
+                    backgroundColor: Colors.green,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Text('CHO PHÉP', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 }
