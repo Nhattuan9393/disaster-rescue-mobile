@@ -27,6 +27,7 @@ import '../../features/logistics/presentation/screens/event_logs_screen.dart';
 import '../../features/resident/presentation/screens/bulk_import_residents_screen.dart';
 import '../../features/resident/presentation/screens/household_profile_screen.dart';
 import '../../features/resident/presentation/screens/notifications_screen.dart';
+import '../../features/resident/presentation/screens/disaster_news_screen.dart';
 import '../../features/resident/presentation/screens/household_members_safety_screen.dart';
 import '../../features/resident/presentation/screens/admin_households_list_screen.dart';
 
@@ -156,6 +157,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/news',
+        builder: (context, state) => const DisasterNewsScreen(),
       ),
       GoRoute(
         path: '/members-safety',

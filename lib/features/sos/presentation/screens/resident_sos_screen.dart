@@ -154,12 +154,12 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
         selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Thông báo'),
+          BottomNavigationBarItem(icon: Icon(Icons.newspaper), label: 'Bản tin'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Hồ sơ'),
         ],
         onTap: (index) {
           if (index == 1) {
-            context.push('/notifications');
+            context.push('/news');
           } else if (index == 2) {
             context.push('/household-profile');
           }
@@ -200,20 +200,20 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xFFFFEBEE),
                         border: Border.all(color: const Color(0xFFFFCDD2), width: 1.5),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       child: Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(6),
                             decoration: const BoxDecoration(
                               color: Color(0xFFEF5350),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.campaign, color: Colors.white, size: 24),
+                            child: const Icon(Icons.campaign, color: Colors.white, size: 20),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           const Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,13 +223,13 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                                   style: TextStyle(
                                     color: Color(0xFFC62828),
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    fontSize: 13,
                                   ),
                                 ),
-                                SizedBox(height: 4),
+                                SizedBox(height: 2),
                                 Text(
                                   'Chạm để xem chi tiết lệnh sơ tán & chỉ đường ➔',
-                                  style: TextStyle(color: Color(0xFF5D4037), fontSize: 11, fontWeight: FontWeight.w600),
+                                  style: TextStyle(color: Color(0xFF5D4037), fontSize: 10.5, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -238,11 +238,11 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // 3. Bản đồ tương tác trực quan hiển thị chi tiết (Nhà tôi, điểm sơ tán, đội cứu hộ)
                   Container(
-                    height: 220,
+                    height: 160,
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade300, width: 1.5),
                       borderRadius: BorderRadius.circular(16),
@@ -336,7 +336,110 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+
+                  // 3.5. Realtime SOS status tracker (Vị trí nổi bật ngay dưới bản đồ nhỏ để dễ dàng theo dõi)
+                  recentSosAsync.when(
+                    data: (sos) {
+                      if (sos == null) return const SizedBox.shrink();
+
+                      Color statusColor;
+                      String statusText = '';
+                      IconData statusIcon;
+                      String statusTip = '';
+
+                      switch (sos.status) {
+                        case SosStatus.pending:
+                          statusColor = Colors.red;
+                          statusText = 'Yêu cầu SOS đang chờ điều phối cứu nạn';
+                          statusIcon = Icons.error_outline;
+                          statusTip = 'Ban chỉ huy xã đã ghi nhận tín hiệu. Vui lòng giữ bình tĩnh, giữ điện thoại kết nối và chuẩn bị theo chỉ dẫn.';
+                          break;
+
+                        case SosStatus.assigned:
+                          statusColor = Colors.orange;
+                          statusText = 'Đội cứu hộ đang cơ động tiếp cận';
+                          statusIcon = Icons.directions_car;
+                          statusTip = 'Đội cứu hộ đã xuất phát. Sếp có thể theo dõi xe cơ động (mốc màu xanh lá) di chuyển trực tiếp trên bản đồ phía trên!';
+                          break;
+                        case SosStatus.inProgress:
+                          statusColor = Colors.blue;
+                          statusText = 'Đang tiến hành ứng cứu thực địa';
+                          statusIcon = Icons.medical_services;
+                          statusTip = 'Đội cứu hộ đã tiếp cận hiện trường và đang tiến hành di dời/hỗ trợ y tế khẩn cấp cho gia đình.';
+                          break;
+                        case SosStatus.completed:
+                          statusColor = Colors.green;
+                          statusText = 'Cứu hộ thành công!';
+                          statusIcon = Icons.check_circle;
+                          statusTip = 'Gia đình đã được di tản đến nơi an toàn. Cảm ơn sự hợp tác và kiên cường của sếp và gia đình!';
+                          break;
+                        default:
+                          statusColor = Colors.grey;
+                          statusText = 'Yêu cầu cứu nạn';
+                          statusIcon = Icons.info;
+                          statusTip = 'Hệ thống đang đồng bộ thông tin cứu hộ.';
+                      }
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.08),
+                           border: Border.all(color: statusColor.withOpacity(0.4), width: 1.5),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(statusIcon, color: statusColor, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    statusText,
+                                    style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                )
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              statusTip,
+                              style: TextStyle(color: Colors.grey.shade800, fontSize: 11, height: 1.3),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Mã số SOS: ${sos.id.substring(0, 8).toUpperCase()}',
+                                  style: const TextStyle(color: Colors.black54, fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: statusColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    'Độ khẩn: ${sos.priorityScore}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    loading: () => const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
 
                   // 4. TIÊU ĐỀ: NGUY HIỂM TỨC THÌ
                   const Text(
@@ -350,19 +453,69 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // NÚT BẤM SOS KHỔNG LỒ KIỂU MOCKUP
+                  // NÚT BẤM SOS KHỔNG LỒ
                   GestureDetector(
                     onTap: sosState.isLoading
                         ? null
-                        : () {
-                            ref.read(sosControllerProvider.notifier).triggerSOS(
-                                  household: _testHousehold,
-                                  isWaterAtRoof: _isWaterAtRoof,
-                                  isInjured: _isInjured,
-                                );
+                        : () async {
+                            // Hiển thị Dialog cấp quyền giả lập của Android
+                            final permissionGranted = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                title: Row(
+                                  children: const [
+                                    Icon(Icons.location_on, color: Color(0xFFD32F2F), size: 24),
+                                    SizedBox(width: 8),
+                                    Text('Quyền Truy Cập Vị Trí', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                content: const Text(
+                                  'DisasterRescue cần truy cập vị trí của thiết bị này để gửi tọa độ cứu hộ khẩn cấp của bạn lên Ban chỉ huy.',
+                                  style: TextStyle(fontSize: 13, height: 1.4),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('TỪ CHỐI', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('CHO PHÉP', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (permissionGranted == true) {
+                              await ref.read(sosControllerProvider.notifier).triggerSOS(
+                                    household: _testHousehold,
+                                    isWaterAtRoof: _isWaterAtRoof,
+                                    isInjured: _isInjured,
+                                  );
+                            } else {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('⚠️ Quyền truy cập vị trí bị từ chối. Sử dụng tọa độ dự phòng.'),
+                                  backgroundColor: Colors.orange,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              await ref.read(sosControllerProvider.notifier).triggerSOS(
+                                    household: _testHousehold,
+                                    isWaterAtRoof: _isWaterAtRoof,
+                                    isInjured: _isInjured,
+                                  );
+                            }
+                            
+                            // DR-026: Nếu mất mạng, sau khi lưu Hive thì chuyển sang màn SMS Fallback
+                            if (!isOnline && mounted) {
+                              context.push('/offline-sms');
+                            }
                           },
                     child: Container(
-                      height: 220,
+                      height: 235,
                       decoration: BoxDecoration(
                         color: sosState.isLoading
                             ? Colors.grey
@@ -376,42 +529,69 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                           )
                         ],
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.white, width: 2),
-                            ),
-                            child: const Text(
-                              'SOS',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 20,
+                          // Các vòng tròn đồng tâm giả lập phát sóng cứu hộ khẩn cấp
+                          Positioned(
+                            child: Container(
+                              width: 170,
+                              height: 170,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withOpacity(0.08), width: 15),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'S O S',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 38,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 4,
+                          Positioned(
+                            child: Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withOpacity(0.12), width: 10),
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'BẤM ĐỂ GỬI NGAY',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.white, width: 2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'SOS',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 22,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'S O S',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 4,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'BẤM ĐỂ GỬI CỨU HỘ NGAY',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -440,60 +620,6 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // Realtime SOS status tracker
-                  recentSosAsync.when(
-                    data: (sos) {
-                      if (sos == null) return const SizedBox.shrink();
-
-                      Color statusColor;
-                      switch (sos.status) {
-                        case SosStatus.pending:
-                          statusColor = Colors.red;
-                          break;
-                        case SosStatus.assigned:
-                          statusColor = Colors.orange;
-                          break;
-                        case SosStatus.inProgress:
-                          statusColor = Colors.blue;
-                          break;
-                        case SosStatus.completed:
-                          statusColor = Colors.green;
-                          break;
-                        default:
-                          statusColor = Colors.grey;
-                      }
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 24),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.08),
-                          border: Border.all(color: statusColor.withOpacity(0.4), width: 1.5),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.circle, color: statusColor, size: 12),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Trạng thái: ${sos.status.name.toUpperCase()}',
-                                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
-                                )
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text('Mã SOS: ${sos.id.substring(0, 8)} | Điểm khẩn cấp: ${sos.priorityScore}'),
-                          ],
-                        ),
-                      );
-                    },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
 
                   // 5. TIÊU ĐỀ: CÒN THỜI GIAN
                   const Text(
