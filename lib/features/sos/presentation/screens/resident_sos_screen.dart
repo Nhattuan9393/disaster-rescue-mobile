@@ -9,6 +9,7 @@ import '../../../../core/utils/logger.dart';
 import '../../../household/domain/household_model.dart';
 import '../providers/sos_controller.dart';
 import '../providers/sos_provider.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../domain/sos_status.dart';
 
 import 'package:latlong2/latlong.dart';
@@ -54,8 +55,49 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
   Future<void> _preFetchLocation() async {
     try {
       AppLogger.i('Khởi động trước định vị GPS để tránh thời gian chết...');
-      final gpsService = ref.read(gpsServiceProvider);
-      await gpsService.getCurrentLocation();
+      
+      // Kiểm tra quyền định vị hiện tại
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied && mounted) {
+        // Yêu cầu quyền ngay lập tức tại thời điểm bình tĩnh (khi mới mở màn hình)
+        final permissionGranted = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.location_on, color: Color(0xFFD32F2F), size: 24),
+                SizedBox(width: 8),
+                Text('Quyền Truy Cập Vị Trí', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: const Text(
+              'DisasterRescue cần truy cập vị trí của thiết bị này để gửi tọa độ cứu hộ khẩn cấp của bạn lên Ban chỉ huy.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('TỪ CHỐI', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('CHO PHÉP', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
+              ),
+            ],
+          ),
+        );
+
+        if (permissionGranted == true) {
+          final gpsService = ref.read(gpsServiceProvider);
+          await gpsService.getCurrentLocation();
+        } else {
+          AppLogger.w('Người dùng từ chối cấp quyền vị trí tại thời điểm bình tĩnh.');
+        }
+      } else {
+        final gpsService = ref.read(gpsServiceProvider);
+        await gpsService.getCurrentLocation();
+      }
     } catch (e) {
       AppLogger.w('Pre-fetch GPS failed: $e');
     }
@@ -458,56 +500,13 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                     onTap: sosState.isLoading
                         ? null
                         : () async {
-                            // Hiển thị Dialog cấp quyền giả lập của Android
-                            final permissionGranted = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                title: Row(
-                                  children: const [
-                                    Icon(Icons.location_on, color: Color(0xFFD32F2F), size: 24),
-                                    SizedBox(width: 8),
-                                    Text('Quyền Truy Cập Vị Trí', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                                content: const Text(
-                                  'DisasterRescue cần truy cập vị trí của thiết bị này để gửi tọa độ cứu hộ khẩn cấp của bạn lên Ban chỉ huy.',
-                                  style: TextStyle(fontSize: 13, height: 1.4),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
-                                    child: const Text('TỪ CHỐI', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, true),
-                                    child: const Text('CHO PHÉP', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12)),
-                                  ),
-                                ],
-                              ),
-                            );
-
-                            if (permissionGranted == true) {
-                              await ref.read(sosControllerProvider.notifier).triggerSOS(
-                                    household: _testHousehold,
-                                    isWaterAtRoof: _isWaterAtRoof,
-                                    isInjured: _isInjured,
-                                  );
-                            } else {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('⚠️ Quyền truy cập vị trí bị từ chối. Sử dụng tọa độ dự phòng.'),
-                                  backgroundColor: Colors.orange,
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                              await ref.read(sosControllerProvider.notifier).triggerSOS(
-                                    household: _testHousehold,
-                                    isWaterAtRoof: _isWaterAtRoof,
-                                    isInjured: _isInjured,
-                                  );
-                            }
+                            // Không hiện bất cứ popup cản trở nào tại thời điểm hoảng loạn!
+                            // Gửi tín hiệu trực tiếp ngay lập tức bằng GPS hoặc tọa độ gia đình mặc định
+                            await ref.read(sosControllerProvider.notifier).triggerSOS(
+                                  household: _testHousehold,
+                                  isWaterAtRoof: _isWaterAtRoof,
+                                  isInjured: _isInjured,
+                                );
                             
                             // DR-026: Nếu mất mạng, sau khi lưu Hive thì chuyển sang màn SMS Fallback
                             if (!isOnline && mounted) {
