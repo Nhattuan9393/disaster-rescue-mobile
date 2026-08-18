@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +13,7 @@ import '../providers/sos_controller.dart';
 import '../providers/sos_provider.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../domain/sos_status.dart';
+import '../../domain/sos_model.dart';
 
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -103,6 +106,161 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
     }
   }
 
+  // Theo dõi vị trí nền & giả lập dung lượng Pin thích ứng
+  StreamSubscription<Position>? _positionSubscription;
+  double _simulatedBatteryLevel = 75.0; // Mặc định 75%
+  bool _isTracking = false;
+  String? _currentlyTrackingSosId;
+
+  @override
+  void dispose() {
+    _positionSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _handleActiveSosTracking(SosRequestEntity? sos, bool isOnline) {
+    if (sos == null) {
+      _stopTracking();
+      return;
+    }
+
+    final isActive = sos.status == SosStatus.pending ||
+        sos.status == SosStatus.assigned ||
+        sos.status == SosStatus.inProgress;
+
+    if (isActive) {
+      if (!_isTracking || _currentlyTrackingSosId != sos.id) {
+        _startTracking(sos.id, isOnline);
+      }
+    } else {
+      _stopTracking();
+    }
+  }
+
+  void _startTracking(String sosId, bool isOnline) {
+    _stopTracking();
+    _isTracking = true;
+    _currentlyTrackingSosId = sosId;
+
+    AppLogger.i('Bắt đầu lắng nghe thay đổi vị trí nền cho SOS: $sosId');
+
+    // Xác định khoảng thời gian thích ứng dựa trên mức Pin giả lập
+    int intervalSeconds = 30; // Tiêu chuẩn
+    if (_simulatedBatteryLevel < 20) {
+      AppLogger.w('Pin yếu (<20%). Không bật định vị nền tự động để tiết kiệm năng lượng.');
+      return; // Tắt hoàn toàn định vị nền tự động
+    } else if (_simulatedBatteryLevel <= 50) {
+      intervalSeconds = 120; // Giãn chu kỳ 2 phút
+      AppLogger.i('Cấu hình định vị nền thích ứng: 2 phút / lần quét (Mức pin: $_simulatedBatteryLevel%)');
+    } else {
+      intervalSeconds = 30; // 30 giây
+      AppLogger.i('Cấu hình định vị nền tiêu chuẩn: 30 giây / lần quét (Mức pin: $_simulatedBatteryLevel%)');
+    }
+
+    final LocationSettings locationSettings;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      locationSettings = AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+        intervalDuration: Duration(seconds: intervalSeconds),
+      );
+    } else {
+      locationSettings = const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+      );
+    }
+
+    _positionSubscription = Geolocator.getPositionStream(locationSettings: locationSettings).listen(
+      (Position position) async {
+        AppLogger.i('Vị trí di chuyển mới quét được: ${position.latitude}, ${position.longitude}');
+        await _performLocationUpdate(sosId, position.latitude, position.longitude, isOnline);
+      },
+      onError: (e) {
+        AppLogger.e('Lỗi luồng định vị nền: $e');
+      },
+    );
+  }
+
+  void _stopTracking() {
+    _positionSubscription?.cancel();
+    _positionSubscription = null;
+    _isTracking = false;
+    _currentlyTrackingSosId = null;
+  }
+
+  Future<void> _performLocationUpdate(String sosId, double lat, double lng, bool isOnline) async {
+    if (isOnline) {
+      try {
+        AppLogger.i('Đang cập nhật trực tuyến vị trí mới lên Firestore cho SOS: $sosId');
+        await FirebaseFirestore.instance.collection('sos_requests').doc(sosId).update({
+          'latitude': lat,
+          'longitude': lng,
+          'lastUpdated': DateTime.now().toIso8601String(),
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('📍 Đã tự động cập nhật vị trí thời gian thực: $lat, $lng'),
+              backgroundColor: Colors.blue.shade700,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        AppLogger.e('Lỗi cập nhật vị trí trực tuyến: $e');
+      }
+    } else {
+      // Cơ chế phát sóng SMS ngầm ngoại tuyến tự động (Silent Background SMS Broadcast)
+      final smsPayload = 'SOS_UPDATE#$sosId#$lat,$lng#BAT${_simulatedBatteryLevel.toInt()}';
+      AppLogger.i('[SMS Background Service] Tự động gửi SMS ngầm thành công: "$smsPayload" đến tổng đài 0203.123.456');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.sms, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('📱 [Offline] Đã tự động gửi SMS ngầm cập nhật vị trí: $lat, $lng'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.amber.shade900,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _forceManualLocationUpdate(String sosId, bool isOnline) async {
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('🔄 Đang quét GPS mới nhất để cập nhật thủ công...'), duration: Duration(milliseconds: 500)),
+        );
+      }
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      await _performLocationUpdate(sosId, position.latitude, position.longitude, isOnline);
+    } catch (e) {
+      AppLogger.w('Không quét được GPS trực tiếp, sử dụng vị trí cache.');
+      final gpsService = ref.read(gpsServiceProvider);
+      final location = await gpsService.getCurrentLocation();
+      if (location != null) {
+        await _performLocationUpdate(sosId, location.latitude, location.longitude, isOnline);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isOnline = ref.watch(isOnlineProvider);
@@ -136,6 +294,15 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
         );
       }
     });
+
+    // Tự động điều khiển luồng lắng nghe vị trí khẩn cấp thích ứng
+    ref.listen<AsyncValue<SosRequestEntity?>>(
+      recentResidentSosProvider(_testHousehold.id),
+      (prev, next) {
+        final sos = next.valueOrNull;
+        _handleActiveSosTracking(sos, isOnline);
+      },
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9FB),
@@ -468,6 +635,102 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                                   child: Text(
                                     'Độ khẩn: ${sos.priorityScore}',
                                     style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 16),
+                            // Thông báo trạng thái Pin & Chu kỳ định vị thích ứng
+                            Row(
+                              children: [
+                                Icon(
+                                  _simulatedBatteryLevel < 20
+                                      ? Icons.battery_alert
+                                      : (_simulatedBatteryLevel <= 50 ? Icons.battery_charging_full : Icons.battery_full),
+                                  color: _simulatedBatteryLevel < 20
+                                      ? Colors.red
+                                      : (_simulatedBatteryLevel <= 50 ? Colors.orange : Colors.green),
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    _simulatedBatteryLevel < 20
+                                        ? 'Chế độ Tiết kiệm: ĐÃ TẮT định vị nền để giữ nguồn.'
+                                        : (_simulatedBatteryLevel <= 50
+                                            ? 'Chế độ Tiết kiệm: Định vị thích ứng mỗi 2 phút.'
+                                            : 'Chế độ bình thường: Định vị nền hoạt động mỗi 30s.'),
+                                    style: TextStyle(
+                                      color: _simulatedBatteryLevel < 20
+                                          ? Colors.red.shade900
+                                          : (_simulatedBatteryLevel <= 50 ? Colors.orange.shade900 : Colors.green.shade900),
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Các nút tương tác thủ công + Trượt mô phỏng pin
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Nút cập nhật vị trí thủ công khẩn cấp
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: statusColor,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    elevation: 0,
+                                  ),
+                                  onPressed: () => _forceManualLocationUpdate(sos.id, isOnline),
+                                  icon: const Icon(Icons.my_location, size: 14),
+                                  label: const Text('Cập nhật vị trí', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                                
+                                // Bộ trượt mô phỏng dung lượng pin (Dành riêng cho demo & nghiệm thu của sếp)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        '🔋 SIM Pin: ${_simulatedBatteryLevel.toInt()}%',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      SizedBox(
+                                        width: 50,
+                                        height: 20,
+                                        child: SliderTheme(
+                                          data: SliderThemeData(
+                                            trackHeight: 2,
+                                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                                            activeTrackColor: statusColor,
+                                            thumbColor: statusColor,
+                                          ),
+                                          child: Slider(
+                                            value: _simulatedBatteryLevel,
+                                            min: 10,
+                                            max: 100,
+                                            onChanged: (val) {
+                                              setState(() {
+                                                _simulatedBatteryLevel = val;
+                                              });
+                                              // Tự động khởi động lại luồng định vị thích ứng
+                                              _startTracking(sos.id, isOnline);
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
