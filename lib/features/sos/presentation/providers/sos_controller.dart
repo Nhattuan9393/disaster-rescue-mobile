@@ -48,6 +48,11 @@ class SosController extends StateNotifier<SosState> {
     required bool isWaterAtRoof,
     required bool isInjured,
   }) async {
+    if (state.isLoading) {
+      AppLogger.w('Đang trong quá trình gửi SOS, bỏ qua yêu cầu trùng lặp');
+      return;
+    }
+
     final now = DateTime.now();
 
     // DR-022: Debounce chống spam nếu bấm quá nhanh
@@ -61,7 +66,12 @@ class SosController extends StateNotifier<SosState> {
       return;
     }
 
-    state = state.copyWith(isLoading: true, errorMessage: null, successMessage: null);
+    state = state.copyWith(
+      isLoading: true,
+      errorMessage: null,
+      successMessage: null,
+      lastSentTime: now, // Set early to prevent spamming Geolocator package
+    );
 
     try {
       // DR-021: Lấy GPS (có tự động fallback lấy Cache nếu không có quyền)
@@ -69,7 +79,7 @@ class SosController extends StateNotifier<SosState> {
       final location = await gpsService.getCurrentLocation();
 
       if (location == null) {
-        throw Exception('Không thể lấy tọa độ hiện tại hoặc tọa độ từ Cache.');
+        throw Exception('Không thể lấy vị trí GPS hiện tại. Vui lòng kiểm tra định vị (GPS) đã bật và cấp quyền vị trí cho ứng dụng chưa.');
       }
 
       // DR-017: Tính điểm ưu tiên (Priority Score)
@@ -99,7 +109,6 @@ class SosController extends StateNotifier<SosState> {
 
       state = state.copyWith(
         isLoading: false,
-        lastSentTime: now,
         successMessage: isOnline 
             ? 'Đã gửi tín hiệu SOS khẩn cấp thành công!' 
             : 'Đã lưu SOS vào hàng đợi. Sẽ gửi tự động khi có mạng!',
@@ -109,7 +118,7 @@ class SosController extends StateNotifier<SosState> {
       AppLogger.e('Gửi SOS thất bại', error: e, stackTrace: stack);
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Đã có lỗi xảy ra: ${e.toString()}',
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
     }
   }
