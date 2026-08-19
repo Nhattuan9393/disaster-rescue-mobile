@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class LoginScreen extends StatefulWidget {
+import '../../domain/user_model.dart';
+import '../providers/auth_controller.dart';
+
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _usernameCtrl = TextEditingController(text: '0987 654 321');
-  final _passwordCtrl = TextEditingController(text: '123456');
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _usernameCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -19,52 +24,64 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submitLogin() {
-    final input = _usernameCtrl.text.trim().toLowerCase();
+  Future<void> _submitLogin() async {
+    final input = _usernameCtrl.text.trim();
     final password = _passwordCtrl.text;
-
-    // Kiểm tra tài khoản mẫu thường trực & vãng lai
-    if (input == 'tt1' && password == '12345') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('⛑️ Đăng nhập thành công Đội Cứu Hộ Thường Trực!'), backgroundColor: Colors.green.shade800),
-      );
-      context.go('/rescue?type=permanent');
-      return;
-    }
-    
-    if (input == 'vl1' && password == '12345') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: const Text('⛑️ Đăng nhập thành công Đội Cứu Hộ Vãng Lai / Tình Nguyện!'), backgroundColor: Colors.orange.shade800),
-      );
-      context.go('/rescue?type=volunteer');
+    if (input.isEmpty || password.isEmpty) {
+      _showError('Vui lòng nhập tài khoản và mật khẩu.');
       return;
     }
 
-    // Logic Phân Quyền Vai Trò Theo Prototype s02/s03 (Đăng nhập đúng pass mặc định 123456):
-    if (password == '123456') {
-      if (input == 'admin' || input == '0912111222') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('🏛️ Đăng nhập thành công Admin Ban Chỉ Huy Xã!'), backgroundColor: Colors.blue.shade900),
-        );
+    final user = await ref
+        .read(authControllerProvider.notifier)
+        .signIn(input, password);
+
+    if (!mounted) return;
+    if (user == null) {
+      final error = ref.read(authControllerProvider).error;
+      _showLoginFailedDialog(error);
+      return;
+    }
+    _routeByRole(user);
+  }
+
+  void _routeByRole(UserModel user) {
+    switch (user.role) {
+      case UserRole.admin:
+        _snack('🏛️ Đăng nhập Admin thành công', Colors.blue.shade900);
         context.go('/admin');
-        return;
-      } else if (input == 'truongthon' || input == '0987654321' || input.contains('nha')) {
-        context.push('/select-role');
-        return;
-      } else if (input == 'dq01' || input.contains('cuuho')) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('⛑️ Đăng nhập thành công Đội Cứu Hộ Thường Trực!'), backgroundColor: Colors.green.shade800),
-        );
-        context.go('/rescue?type=permanent');
-        return;
-      } else if (input == '0987 654 321') {
+        break;
+      case UserRole.rescueTeam:
+        final type = user.teamType == RescueTeamType.volunteer
+            ? 'volunteer'
+            : 'permanent';
+        _snack('⛑️ Đăng nhập Đội cứu hộ thành công', Colors.green.shade800);
+        context.go('/rescue?type=$type');
+        break;
+      case UserRole.household:
+        _snack('🏠 Đăng nhập Hộ dân thành công', const Color(0xFFD32F2F));
         context.go('/resident');
-        return;
-      }
+        break;
+      case UserRole.public:
+        context.go('/situation-board');
+        break;
     }
+  }
 
-    // Nếu thông tin đăng nhập sai -> Hiển thị Dialog gợi ý đăng ký tài khoản mới
-    showDialog(
+  void _snack(String msg, Color bg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: bg),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red.shade700),
+    );
+  }
+
+  void _showLoginFailedDialog(String? error) {
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -72,12 +89,14 @@ class _LoginScreenState extends State<LoginScreen> {
           children: const [
             Icon(Icons.error_outline, color: Colors.red),
             SizedBox(width: 8),
-            Text('Đăng nhập thất bại', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text('Đăng nhập thất bại',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text(
-          'Mật khẩu không khớp hoặc tài khoản không tồn tại. Bạn chưa có tài khoản hoặc muốn đăng ký tài khoản mới?',
-          style: TextStyle(fontSize: 12),
+        content: Text(
+          error ??
+              'Mật khẩu không khớp hoặc tài khoản không tồn tại. Bạn muốn đăng ký tài khoản mới?',
+          style: const TextStyle(fontSize: 12),
         ),
         actions: [
           TextButton(
@@ -85,14 +104,17 @@ class _LoginScreenState extends State<LoginScreen> {
               Navigator.pop(ctx);
               context.push('/register-household');
             },
-            child: const Text('Đăng ký Hộ dân', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('Đăng ký Hộ dân',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.push('/volunteer-register');
             },
-            child: const Text('Đăng ký Cứu hộ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+            child: const Text('Đăng ký Cứu hộ',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -103,231 +125,23 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _showForgotPasswordDialog() {
-    final emailCtrl = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('🔑 Khôi phục mật khẩu', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Nhập số điện thoại hoặc email đăng ký để nhận mã khôi phục:', style: TextStyle(fontSize: 11.5)),
-            const SizedBox(height: 10),
-            TextField(
-              controller: emailCtrl,
-              decoration: InputDecoration(
-                hintText: 'SĐT hoặc Email',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              ),
-              style: const TextStyle(fontSize: 13),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFD32F2F)),
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✅ Đã gửi mã xác minh khôi phục mật khẩu. Vui lòng kiểm tra SMS/Email!'), backgroundColor: Colors.green),
-              );
-            },
-            child: const Text('Gửi mã', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-
-  void _showMtqQrPopup() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.qr_code_2, color: Color(0xFFD32F2F), size: 26),
-                      SizedBox(width: 8),
-                      Text('Đăng ký MTQ Tại Chỗ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const Divider(),
-              const SizedBox(height: 8),
-
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(8)),
-                child: Text(
-                  '📍 Trạm Tiếp Nhận: UBND Xã Bình Liêu — Cổng Trợ Cứu Số 1',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Khung Mã QR mẫu sắc nét có Logo ở trung tâm
-              Container(
-                width: 180,
-                height: 180,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade300, width: 2),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 10),
-                  ],
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Giả lập mã QR với các nét ô đốm chuẩn
-                    GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 7,
-                        crossAxisSpacing: 3,
-                        mainAxisSpacing: 3,
-                      ),
-                      itemCount: 49,
-                      itemBuilder: (context, index) {
-                        final isCorner = index == 0 || index == 1 || index == 7 || index == 8 ||
-                            index == 5 || index == 6 || index == 12 || index == 13 ||
-                            index == 35 || index == 36 || index == 42 || index == 43;
-                        final isCenter = index >= 20 && index <= 28;
-                        if (isCenter) return const SizedBox.shrink();
-                        return Container(
-                          decoration: BoxDecoration(
-                            color: isCorner ? const Color(0xFFD32F2F) : ((index * 7) % 3 == 0 ? Colors.black87 : Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        );
-                      },
-                    ),
-                    // Logo trung tâm QR
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD32F2F),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: const Center(
-                        child: Text('SOS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              const Text(
-                'Mã QR dán sẵn tại điểm tiếp nhận xã.\nBấm nút bên dưới để mở ngay form khai báo MTQ / Đội cứu hộ vãng lai.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.3),
-              ),
-              const SizedBox(height: 16),
-
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green.shade800,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    context.push('/volunteer-register');
-                  },
-                  icon: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 18),
-                  label: const Text(
-                    '📱 QUÉT / MỞ FORM ĐĂNG KÝ MTQ NGAY',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 11.5),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authControllerProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 1. Cụm Logo SOS vuông đỏ căn giữa (Chuẩn Ảnh 3 Prototype s02)
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD32F2F),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withValues(alpha: 0.25),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.black87, width: 2.5),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'SOS',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 12,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                _logoBadge(),
                 const SizedBox(height: 12),
-
-                // Tên ứng dụng
                 const Text(
                   'DisasterRescue',
                   textAlign: TextAlign.center,
@@ -339,8 +153,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Tiêu đề & Subtitle căn giữa
                 const Text(
                   'Đăng nhập',
                   textAlign: TextAlign.center,
@@ -354,111 +166,62 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Text(
                   'Đăng nhập để gửi SOS và nhận cảnh báo sớm',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12.5,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 12.5),
                 ),
                 const SizedBox(height: 24),
-
-                // 2. FORM ĐĂNG NHẬP
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'SỐ ĐIỆN THOẠI HOẶC EMAIL',
-                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: _usernameCtrl,
-                      decoration: InputDecoration(
-                        hintText: '0987 654 321',
-                        fillColor: Colors.white,
-                        filled: true,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 14),
-
-                    const Text(
-                      'MẬT KHẨU',
-                      style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
-                    ),
-                    const SizedBox(height: 4),
-                    TextField(
-                      controller: _passwordCtrl,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        hintText: '••••••••',
-                        suffixIcon: const Icon(Icons.visibility_off, color: Colors.grey, size: 20),
-                        fillColor: Colors.white,
-                        filled: true,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      ),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        GestureDetector(
-                          onTap: _showForgotPasswordDialog,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Text(
-                              'Quên mật khẩu?',
-                              style: TextStyle(color: Colors.blue.shade800, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                _loginForm(),
                 const SizedBox(height: 20),
-
-                // 3. NÚT ĐĂNG NHẬP CHÍNH (ĐỎ)
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD32F2F),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                       elevation: 0,
                     ),
-                    onPressed: _submitLogin,
-                    child: const Text(
-                      'ĐĂNG NHẬP',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14, letterSpacing: 0.5),
-                    ),
+                    onPressed: authState.isLoading ? null : _submitLogin,
+                    child: authState.isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'ĐĂNG NHẬP',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                fontSize: 14,
+                                letterSpacing: 0.5),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 14),
-
-                // 4. NÚT VIỀN XANH: Xem tình hình thiên tai (không cần đăng nhập)
                 SizedBox(
                   width: double.infinity,
                   height: 44,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: Colors.blue.shade700, width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                     onPressed: () => context.push('/situation-board'),
-                    icon: Icon(Icons.visibility, color: Colors.blue.shade800, size: 18),
+                    icon: Icon(Icons.visibility,
+                        color: Colors.blue.shade800, size: 18),
                     label: Text(
                       '👁️ Xem tình hình thiên tai (không cần đăng nhập)',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade900, fontSize: 11.5),
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade900,
+                          fontSize: 11.5),
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // 5. CÁC LINK ĐĂNG KÝ MÀU ĐỎ
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -466,26 +229,173 @@ class _LoginScreenState extends State<LoginScreen> {
                       onTap: () => context.push('/register-household'),
                       child: const Text(
                         'Đăng ký hộ dân',
-                        style: TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold, fontSize: 12),
+                        style: TextStyle(
+                            color: Color(0xFFD32F2F),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
                       ),
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 10),
-                      child: Text('·', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                      child: Text('·',
+                          style: TextStyle(
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold)),
                     ),
                     GestureDetector(
-                      onTap: _showMtqQrPopup,
+                      onTap: () => context.push('/volunteer-register'),
                       child: const Text(
-                        'Đăng ký đội cứu hộ / MTQ (Mã QR)',
-                        style: TextStyle(color: Color(0xFFD32F2F), fontWeight: FontWeight.bold, fontSize: 12),
+                        'Đăng ký đội cứu hộ',
+                        style: TextStyle(
+                            color: Color(0xFFD32F2F),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _testAccountsHint(),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _logoBadge() {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: const Color(0xFFD32F2F),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.red.withValues(alpha: 0.25),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black87, width: 2.5),
+          ),
+          child: const Center(
+            child: Text(
+              'SOS',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 12,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _loginForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'SỐ ĐIỆN THOẠI HOẶC TÊN TÀI KHOẢN',
+          style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              letterSpacing: 0.5),
+        ),
+        const SizedBox(height: 4),
+        TextField(
+          controller: _usernameCtrl,
+          decoration: InputDecoration(
+            hintText: 'admin / dq01 / 0987654321',
+            fillColor: Colors.white,
+            filled: true,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'MẬT KHẨU',
+          style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              letterSpacing: 0.5),
+        ),
+        const SizedBox(height: 4),
+        TextField(
+          controller: _passwordCtrl,
+          obscureText: _obscurePassword,
+          decoration: InputDecoration(
+            hintText: '••••••••',
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                color: Colors.grey,
+                size: 20,
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscurePassword = !_obscurePassword;
+                });
+              },
+            ),
+            fillColor: Colors.white,
+            filled: true,
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          ),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  Widget _testAccountsHint() {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: const [
+          Text('🧪 Tài khoản demo (auto-provision lần đầu):',
+              style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.brown)),
+          SizedBox(height: 4),
+          Text('• admin / 123456 → Admin',
+              style: TextStyle(fontSize: 10.5, color: Colors.brown)),
+          Text('• dq01 / 123456 → Đội cứu hộ thường trực',
+              style: TextStyle(fontSize: 10.5, color: Colors.brown)),
+          Text('• vl1 / 12345 → Đội cứu hộ vãng lai',
+              style: TextStyle(fontSize: 10.5, color: Colors.brown)),
+          Text('• 0987654321 / 123456 → Hộ dân',
+              style: TextStyle(fontSize: 10.5, color: Colors.brown)),
+        ],
       ),
     );
   }

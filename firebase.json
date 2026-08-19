@@ -25,7 +25,7 @@
   "firestore": {
     "database": "(default)",
     "location": "asia-southeast3",
-    "rules": "firebase deploy --only firestore:rules",
+    "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   }
 }
