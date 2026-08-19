@@ -9,8 +9,10 @@ import '../../../../core/services/connectivity_service.dart';
 import '../../../../core/services/gps_service.dart';
 import '../../../../core/utils/logger.dart';
 import '../../../household/domain/household_model.dart';
+import '../../../household/data/household_repository.dart';
 import '../providers/sos_controller.dart';
 import '../providers/sos_provider.dart';
+import '../../data/sos_delivery_service.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../domain/sos_status.dart';
 import '../../domain/sos_model.dart';
@@ -32,19 +34,15 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
   bool _isWaterAtRoof = false;
   bool _isInjured = false;
 
-  // Giả lập Hộ dân đăng nhập
-  final _testHousehold = const HouseholdModel(
-    id: 'household_123',
-    ownerUid: 'user_resident_abc',
-    address: 'Thôn Pắc Liềng, Bình Liêu',
+  /// Fallback tối thiểu khi profile hộ dân chưa load xong hoặc user chưa gắn hộ
+  /// (VD admin đăng nhập vào /resident). Ưu tiên đọc `myHouseholdStreamProvider`.
+  static const HouseholdModel _fallbackHousehold = HouseholdModel(
+    id: 'unknown',
+    ownerUid: 'unknown',
+    address: 'Chưa đăng ký hộ',
     latitude: 21.5284,
     longitude: 107.3986,
-    memberCount: 4,
-    childrenCount: 1,
-    elderlyCount: 1,
-    sickCount: 0,
-    headName: 'Nguyễn Văn Tuấn',
-    contactPhone: '0987654321',
+    memberCount: 1,
   );
 
   @override
@@ -121,6 +119,7 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
   void _handleActiveSosTracking(SosRequestEntity? sos, bool isOnline) {
     if (sos == null) {
       _stopTracking();
+      ref.read(sosDeliveryServiceProvider.notifier).clear();
       return;
     }
 
@@ -134,6 +133,8 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
       }
     } else {
       _stopTracking();
+      // SOS đã completed/cancelled — dọn card trạng thái đa kênh.
+      ref.read(sosDeliveryServiceProvider.notifier).clear();
     }
   }
 
@@ -214,9 +215,10 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
         AppLogger.e('Lỗi cập nhật vị trí trực tuyến: $e');
       }
     } else {
-      // Cơ chế phát sóng SMS ngầm ngoại tuyến tự động (Silent Background SMS Broadcast)
-      final smsPayload = 'SOS_UPDATE#$sosId#$lat,$lng#BAT${_simulatedBatteryLevel.toInt()}';
-      AppLogger.i('[SMS Background Service] Tự động gửi SMS ngầm thành công: "$smsPayload" đến tổng đài 0203.123.456');
+      // Offline: đưa update vị trí vào hàng đợi Hive; SosSyncService sẽ đẩy
+      // khi mạng trở lại. KHÔNG giả vờ SMS đã gửi — chưa cắm plugin native.
+      AppLogger.i(
+          '[SosLocationUpdate offline] $sosId lat=$lat lng=$lng — chờ mạng để sync');
 
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
@@ -224,10 +226,10 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.sms, color: Colors.white),
+                const Icon(Icons.cloud_off, color: Colors.white),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('📱 [Offline] Đã tự động gửi SMS ngầm cập nhật vị trí: $lat, $lng'),
+                  child: Text('📍 [Offline] Vị trí mới đã lưu — sẽ tự đẩy khi có mạng ($lat, $lng)'),
                 ),
               ],
             ),
@@ -238,6 +240,168 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
         );
       }
     }
+  }
+
+  Widget _buildDeliveryStatusCard() {
+    final snap = ref.watch(sosDeliveryServiceProvider);
+    if (snap == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.radar, color: Color(0xFFC62828), size: 18),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Đang phát tín hiệu SOS qua các kênh',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFFC62828)),
+                ),
+              ),
+              Text(
+                _fmtTime(snap.lastUpdated),
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _channelRow(
+            icon: Icons.save_outlined,
+            label: 'Lưu vào máy (Hive queue)',
+            status: snap.channels[SosChannel.firestoreQueue]!,
+          ),
+          _channelRow(
+            icon: Icons.cloud_sync_outlined,
+            label: 'Tự đồng bộ khi có mạng',
+            status: snap.channels[SosChannel.autoSyncInternet]!,
+            waitingHint: 'chờ 4G/WiFi trở lại',
+          ),
+          _channelRow(
+            icon: Icons.sms_outlined,
+            label: 'SMS ngầm (không mở app tin nhắn)',
+            status: snap.channels[SosChannel.silentSms]!,
+            unavailableHint: 'chưa bật plugin native SmsManager',
+          ),
+          _channelRow(
+            icon: Icons.bluetooth_searching,
+            label: 'BLE beacon (đội cứu hộ gần bắt được)',
+            status: snap.channels[SosChannel.bleBeacon]!,
+            unavailableHint: 'chưa bật plugin BLE advertise',
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  snap.anyDelivered
+                      ? '✓ Tín hiệu đã ra khỏi máy qua ít nhất một kênh.'
+                      : 'Đang thử… giữ máy bật.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: snap.anyDelivered ? Colors.green.shade800 : Colors.orange.shade800,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: () => context.push('/offline-sms'),
+                icon: const Icon(Icons.forward_to_inbox, size: 14),
+                label: const Text('Tự tay gửi SMS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _channelRow({
+    required IconData icon,
+    required String label,
+    required SosChannelStatus status,
+    String? waitingHint,
+    String? unavailableHint,
+  }) {
+    late Widget trailing;
+    Color rowColor;
+    String? sub;
+
+    switch (status) {
+      case SosChannelStatus.delivered:
+        trailing = const Icon(Icons.check_circle, color: Colors.green, size: 18);
+        rowColor = Colors.green.shade700;
+        break;
+      case SosChannelStatus.sending:
+        trailing = const SizedBox(
+          width: 14,
+          height: 14,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        );
+        rowColor = Colors.blue.shade700;
+        sub = 'đang thử…';
+        break;
+      case SosChannelStatus.waiting:
+        trailing = const Icon(Icons.hourglass_bottom, color: Colors.orange, size: 18);
+        rowColor = Colors.orange.shade800;
+        sub = waitingHint;
+        break;
+      case SosChannelStatus.unavailable:
+        trailing = Icon(Icons.block, color: Colors.grey.shade500, size: 18);
+        rowColor = Colors.grey.shade600;
+        sub = unavailableHint;
+        break;
+      case SosChannelStatus.failed:
+        trailing = const Icon(Icons.error_outline, color: Colors.red, size: 18);
+        rowColor = Colors.red.shade700;
+        sub = 'thất bại — sẽ thử lại';
+        break;
+      case SosChannelStatus.idle:
+        trailing = const SizedBox.shrink();
+        rowColor = Colors.grey.shade600;
+        break;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 16, color: rowColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 12, color: Colors.black87, fontWeight: FontWeight.w600)),
+                if (sub != null)
+                  Text(sub, style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          trailing,
+        ],
+      ),
+    );
+  }
+
+  String _fmtTime(DateTime t) {
+    two(int n) => n.toString().padLeft(2, '0');
+    return '${two(t.hour)}:${two(t.minute)}:${two(t.second)}';
   }
 
   Future<void> _forceManualLocationUpdate(String sosId, bool isOnline) async {
@@ -265,7 +429,9 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
   Widget build(BuildContext context) {
     final isOnline = ref.watch(isOnlineProvider);
     final sosState = ref.watch(sosControllerProvider);
-    final recentSosAsync = ref.watch(recentResidentSosProvider(_testHousehold.id));
+    final household =
+        ref.watch(myHouseholdStreamProvider).value ?? _fallbackHousehold;
+    final recentSosAsync = ref.watch(recentResidentSosProvider(household.id));
 
     // Watch rescue teams và evacuation points để đưa lên live map
     final rescueTeamsAsync = ref.watch(allRescueTeamsStreamProvider);
@@ -297,7 +463,7 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
 
     // Tự động điều khiển luồng lắng nghe vị trí khẩn cấp thích ứng
     ref.listen<AsyncValue<SosRequestEntity?>>(
-      recentResidentSosProvider(_testHousehold.id),
+      recentResidentSosProvider(household.id),
       (prev, next) {
         final sos = next.valueOrNull;
         _handleActiveSosTracking(sos, isOnline);
@@ -309,12 +475,6 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
         title: const Text(
           'DisasterRescue',
           style: TextStyle(
@@ -355,7 +515,6 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      drawer: const AppDrawer(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
         selectedItemColor: const Color(0xFFD32F2F),
@@ -460,12 +619,12 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                     child: Stack(
                       children: [
                         CoreMapWidget(
-                          center: LatLng(_testHousehold.latitude, _testHousehold.longitude),
+                          center: LatLng(household.latitude, household.longitude),
                           zoom: 14.5,
                           markers: [
                             // Vị trí Hộ dân
                             Marker(
-                              point: LatLng(_testHousehold.latitude, _testHousehold.longitude),
+                              point: LatLng(household.latitude, household.longitude),
                               width: 40,
                               height: 40,
                               child: const Icon(Icons.location_on, color: Color(0xFFD32F2F), size: 36),
@@ -640,98 +799,20 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                               ],
                             ),
                             const Divider(height: 16),
-                            // Thông báo trạng thái Pin & Chu kỳ định vị thích ứng
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
                               children: [
-                                Icon(
-                                  _simulatedBatteryLevel < 20
-                                      ? Icons.battery_alert
-                                      : (_simulatedBatteryLevel <= 50 ? Icons.battery_charging_full : Icons.battery_full),
-                                  color: _simulatedBatteryLevel < 20
-                                      ? Colors.red
-                                      : (_simulatedBatteryLevel <= 50 ? Colors.orange : Colors.green),
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    _simulatedBatteryLevel < 20
-                                        ? 'Chế độ Tiết kiệm: ĐÃ TẮT định vị nền để giữ nguồn.'
-                                        : (_simulatedBatteryLevel <= 50
-                                            ? 'Chế độ Tiết kiệm: Định vị thích ứng mỗi 2 phút.'
-                                            : 'Chế độ bình thường: Định vị nền hoạt động mỗi 30s.'),
-                                    style: TextStyle(
-                                      color: _simulatedBatteryLevel < 20
-                                          ? Colors.red.shade900
-                                          : (_simulatedBatteryLevel <= 50 ? Colors.orange.shade900 : Colors.green.shade900),
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-
-                            // Các nút tương tác thủ công + Trượt mô phỏng pin
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Nút cập nhật vị trí thủ công khẩn cấp
                                 ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: statusColor,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                     elevation: 0,
                                   ),
                                   onPressed: () => _forceManualLocationUpdate(sos.id, isOnline),
                                   icon: const Icon(Icons.my_location, size: 14),
-                                  label: const Text('Cập nhật vị trí', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                ),
-                                
-                                // Bộ trượt mô phỏng dung lượng pin (Dành riêng cho demo & nghiệm thu của sếp)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Text(
-                                        '🔋 SIM Pin: ${_simulatedBatteryLevel.toInt()}%',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      SizedBox(
-                                        width: 50,
-                                        height: 20,
-                                        child: SliderTheme(
-                                          data: SliderThemeData(
-                                            trackHeight: 2,
-                                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                            overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-                                            activeTrackColor: statusColor,
-                                            thumbColor: statusColor,
-                                          ),
-                                          child: Slider(
-                                            value: _simulatedBatteryLevel,
-                                            min: 10,
-                                            max: 100,
-                                            onChanged: (val) {
-                                              setState(() {
-                                                _simulatedBatteryLevel = val;
-                                              });
-                                              // Tự động khởi động lại luồng định vị thích ứng
-                                              _startTracking(sos.id, isOnline);
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  label: const Text('Cập nhật vị trí hiện tại', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                 ),
                               ],
                             ),
@@ -746,17 +827,9 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                     error: (_, __) => const SizedBox.shrink(),
                   ),
 
-                  // 4. TIÊU ĐỀ: NGUY HIỂM TỨC THÌ
-                  const Text(
-                    'NGUY HIỂM TỨC THÌ — TÍNH BẰNG PHÚT',
-                    style: TextStyle(
-                      color: Color(0xFFC62828),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+                  // Delivery service vẫn chạy ngầm (Hive queue + auto-sync +
+                  // SMS ngầm khi cắm), nhưng KHÔNG hiện card status — user
+                  // không cần biết chi tiết kỹ thuật lúc hoảng loạn.
 
                   // NÚT BẤM SOS KHỔNG LỒ
                   GestureDetector(
@@ -766,15 +839,16 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                             // Không hiện bất cứ popup cản trở nào tại thời điểm hoảng loạn!
                             // Gửi tín hiệu trực tiếp ngay lập tức bằng GPS hoặc tọa độ gia đình mặc định
                             await ref.read(sosControllerProvider.notifier).triggerSOS(
-                                  household: _testHousehold,
+                                  household: household,
                                   isWaterAtRoof: _isWaterAtRoof,
                                   isInjured: _isInjured,
                                 );
-                            
-                            // DR-026: Nếu mất mạng, sau khi lưu Hive thì chuyển sang màn SMS Fallback
-                            if (!isOnline && mounted) {
-                              context.push('/offline-sms');
-                            }
+                            // KHÔNG ép nhảy sang /offline-sms — user hoảng loạn
+                            // không cần đọc payload SMS. Card "trạng thái các
+                            // kênh gửi" bên dưới cho họ thấy hệ thống đang
+                            // thay họ bắn qua Hive queue + auto-sync + SMS
+                            // ngầm + BLE. Ai muốn tự bắn SMS thì bấm link
+                            // "Tự tay gửi SMS" trong card đó.
                           },
                     child: Container(
                       height: 235,
@@ -883,18 +957,6 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // 5. TIÊU ĐỀ: CÒN THỜI GIAN
-                  const Text(
-                    'CÒN THỜI GIAN — TÍNH BẰNG GIỜ',
-                    style: TextStyle(
-                      color: Colors.orange,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
                   Row(
                     children: [
                       Expanded(
@@ -964,16 +1026,25 @@ class _ResidentSosScreenState extends ConsumerState<ResidentSosScreen> {
                                             ),
                                           );
                                         }
-                                        await FirebaseFirestore.instance.collection('safety_confirmations').add({
-                                          'householdId': 'household_my_family',
+                                        await FirebaseFirestore.instance
+                                            .collection('safety_confirmations')
+                                            .add({
+                                          'householdId': household.id,
                                           'status': 'safe',
-                                          'source': 'resident_proactive',
-                                          'confidence': 100,
-                                          'timestamp': DateTime.now().toIso8601String(),
+                                          'source': 'selfApp',
+                                          'confidence': 90,
+                                          'timestamp':
+                                              FieldValue.serverTimestamp(),
                                         });
-                                        await FirebaseFirestore.instance.collection('households').doc('household_my_family').set({
+                                        await FirebaseFirestore.instance
+                                            .collection('households')
+                                            .doc(household.id)
+                                            .set({
                                           'safetyStatus': 'safe',
-                                          'lastConfirmed': DateTime.now().toIso8601String(),
+                                          'safetySource': 'selfApp',
+                                          'safetyConfidence': 90,
+                                          'lastConfirmedAt':
+                                              FieldValue.serverTimestamp(),
                                         }, SetOptions(merge: true));
                                       } catch (e) {
                                         if (context.mounted) {

@@ -14,6 +14,9 @@ class AssistanceRequestModel {
   final int confidenceScore;
   final DateTime timestamp;
 
+  /// URL ảnh đã upload lên Firebase Storage (empty nếu user không đính kèm).
+  final List<String> photoUrls;
+
   const AssistanceRequestModel({
     required this.id,
     required this.householdId,
@@ -29,6 +32,7 @@ class AssistanceRequestModel {
     required this.status,
     required this.confidenceScore,
     required this.timestamp,
+    this.photoUrls = const [],
   });
 
   AssistanceRequestModel copyWith({
@@ -81,6 +85,7 @@ class AssistanceRequestModel {
       'status': status,
       'confidenceScore': confidenceScore,
       'timestamp': timestamp.toIso8601String(),
+      'photoUrls': photoUrls,
     };
   }
 
@@ -100,6 +105,7 @@ class AssistanceRequestModel {
       status: json['status'] as String? ?? 'pending',
       confidenceScore: json['confidenceScore'] as int? ?? 0,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      photoUrls: List<String>.from(json['photoUrls'] as List? ?? const []),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/widgets/qr_scanner_screen.dart';
 import '../../../auth/presentation/providers/auth_controller.dart';
 
 class VolunteerRegistrationScreen extends ConsumerStatefulWidget {
@@ -13,18 +14,15 @@ class VolunteerRegistrationScreen extends ConsumerStatefulWidget {
 }
 
 class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrationScreen> with SingleTickerProviderStateMixin {
-  // Wizard steps: 0 = Select Type, 1 = QR Scanning, 2 = Registration Form
+  // Wizard steps: 0 = Select Type, 1 = QR (chỉ khi 'local'), 2 = Registration Form
   int _currentStep = 0;
   String? _registrationType; // 'local' or 'remote'
-  bool _isScanning = false;
-  double _laserPosition = 0.0;
-  Timer? _laserTimer;
-  Timer? _scanTimer;
+  String? _scannedStationCode; // set khi 'local' quét được QR trạm
 
   final _orgCtrl = TextEditingController(text: 'Hội Chữ thập đỏ Hạ Long');
   final _leaderCtrl = TextEditingController(text: 'Nguyễn Văn Hùng');
   final _phoneCtrl = TextEditingController(text: '0912888777');
-  final _passwordCtrl = TextEditingController(text: '12345');
+  final _passwordCtrl = TextEditingController(text: '123456');
   final _membersCtrl = TextEditingController(text: '15');
   final _arrivalTimeCtrl = TextEditingController(text: '11:30 hôm nay');
 
@@ -37,8 +35,6 @@ class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrat
 
   @override
   void dispose() {
-    _laserTimer?.cancel();
-    _scanTimer?.cancel();
     _orgCtrl.dispose();
     _leaderCtrl.dispose();
     _phoneCtrl.dispose();
@@ -48,46 +44,47 @@ class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrat
     super.dispose();
   }
 
-  void _startQRScan() {
-    setState(() {
-      _currentStep = 1;
-      _isScanning = true;
-      _laserPosition = 0.0;
-    });
+  /// "Tại chỗ" → mở camera thật quét QR trạm cứu nạn.
+  /// "Từ xa" → bỏ qua bước quét (đội đang ở tỉnh khác, không tiếp cận được
+  /// QR vật lý), đi thẳng vào form.
+  Future<void> _handleTypeSelected(String type) async {
+    setState(() => _registrationType = type);
 
-    // Animate scanning laser line
-    _laserTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
-      if (!mounted) return;
-      setState(() {
-        _laserPosition += 0.05;
-        if (_laserPosition > 1.0) _laserPosition = 0.0;
-      });
-    });
+    if (type == 'remote') {
+      setState(() => _currentStep = 2);
+      return;
+    }
 
-    // Auto-success after 2 seconds
-    _scanTimer = Timer(const Duration(seconds: 2), () {
-      _onScanSuccess();
-    });
-  }
-
-  void _onScanSuccess() {
-    _laserTimer?.cancel();
-    _scanTimer?.cancel();
+    // 'local' — mở QR scanner thật
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const QrScannerScreen(
+          title: 'Quét QR Trạm cứu nạn',
+          subtitle:
+              'Đưa mã QR trên bảng hiệu Trạm Pắc Liềng vào khung xanh để liên kết đội.',
+        ),
+      ),
+    );
     if (!mounted) return;
+    if (code == null || code.isEmpty) {
+      // User huỷ / camera hỏng → về step chọn loại
+      setState(() => _registrationType = null);
+      return;
+    }
     setState(() {
-      _isScanning = false;
+      _scannedStationCode = code;
       _currentStep = 2;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_registrationType == 'local'
-            ? '📍 Kết nối thành công với Trạm Cứu Hộ Xã Pắc Liềng!'
-            : '🌐 Liên kết thành công với Mã Điều Phối Từ Xa!'),
+        content: Text('📍 Đã liên kết trạm: ${_shortCode(code)}'),
         backgroundColor: Colors.blue.shade900,
         duration: const Duration(seconds: 2),
       ),
     );
   }
+
+  String _shortCode(String s) => s.length > 24 ? '${s.substring(0, 22)}…' : s;
 
   Future<void> _submit() async {
     final org = _orgCtrl.text.trim();
@@ -171,11 +168,11 @@ class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrat
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () {
-            if (_currentStep > 0) {
-              _laserTimer?.cancel();
-              _scanTimer?.cancel();
+            if (_currentStep == 2) {
               setState(() {
-                _currentStep--;
+                _currentStep = 0;
+                _registrationType = null;
+                _scannedStationCode = null;
               });
             } else {
               context.pop();
@@ -183,11 +180,7 @@ class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrat
           },
         ),
         title: Text(
-          _currentStep == 0
-              ? 'Đăng Ký Đội Cứu Hộ'
-              : _currentStep == 1
-                  ? 'Quét Mã QR Đội Cứu Hộ'
-                  : 'Khai Báo Đội Cứu Hộ',
+          _currentStep == 0 ? 'Đăng Ký Đội Cứu Hộ' : 'Khai Báo Đội Cứu Hộ',
           style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 15),
         ),
       ),
@@ -199,8 +192,6 @@ class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrat
     switch (_currentStep) {
       case 0:
         return _buildSelectionStep();
-      case 1:
-        return _buildScanningStep();
       case 2:
         return _buildFormStep();
       default:
@@ -229,33 +220,23 @@ class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrat
           ),
           const SizedBox(height: 30),
 
-          // Option A: Tại Chỗ
+          // Option A: Tại Chỗ — cần quét QR trạm
           _buildSelectionCard(
             title: 'ĐĂNG KÝ TẠI CHỖ',
-            subtitle: 'Đội đã di chuyển đến hiện trường và đang có mặt tại Trạm cứu nạn Pắc Liềng.',
+            subtitle: 'Đội đã đến hiện trường tại Trạm cứu nạn Pắc Liềng. Cần quét QR trạm để liên kết.',
             icon: Icons.qr_code_scanner,
             color: Colors.blue.shade900,
-            onTap: () {
-              setState(() {
-                _registrationType = 'local';
-              });
-              _startQRScan();
-            },
+            onTap: () => _handleTypeSelected('local'),
           ),
           const SizedBox(height: 16),
 
-          // Option B: Từ Xa
+          // Option B: Từ Xa — vào thẳng form, không cần QR
           _buildSelectionCard(
             title: 'ĐĂNG KÝ TỪ XA',
-            subtitle: 'Đội đang chuẩn bị lực lượng, lập danh sách vật tư cứu trợ từ tỉnh/thành phố khác.',
+            subtitle: 'Đội đang chuẩn bị lực lượng, vật tư từ tỉnh/thành khác. Bỏ qua bước QR, đi thẳng form khai báo.',
             icon: Icons.sensors,
             color: Colors.green.shade800,
-            onTap: () {
-              setState(() {
-                _registrationType = 'remote';
-              });
-              _startQRScan();
-            },
+            onTap: () => _handleTypeSelected('remote'),
           ),
         ],
       ),
@@ -314,89 +295,7 @@ class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrat
     );
   }
 
-  // --- STEP 2: Scanning Page ---
-  Widget _buildScanningStep() {
-    return Container(
-      color: Colors.black,
-      width: double.infinity,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Text(
-            'QUÉT MÃ QR LIÊN KẾT',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 0.5),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _registrationType == 'local'
-                ? 'Hãy hướng camera về phía mã QR dán tại Trạm Pắc Liềng'
-                : 'Hãy quét mã điều phối để kết nối với trung tâm từ xa',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.grey, fontSize: 11),
-          ),
-          const SizedBox(height: 40),
-
-          // Scanning Viewport
-          Container(
-            width: 250,
-            height: 250,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white, width: 2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Stack(
-              children: [
-                // Scan Laser
-                Positioned(
-                  top: 250 * _laserPosition,
-                  left: 10,
-                  right: 10,
-                  child: Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: _registrationType == 'local' ? Colors.red : Colors.greenAccent,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (_registrationType == 'local' ? Colors.red : Colors.greenAccent).withOpacity(0.8),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Corner Indicators
-                Positioned(
-                  top: 20,
-                  left: 20,
-                  child: Icon(Icons.qr_code, color: Colors.white.withOpacity(0.2), size: 210),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 40),
-
-          // Simulation Tip
-          const CircularProgressIndicator(color: Colors.white70),
-          const SizedBox(height: 20),
-          const Text(
-            'Hệ thống đang tự động nhận diện mã...',
-            style: TextStyle(color: Colors.white70, fontSize: 11),
-          ),
-
-          const SizedBox(height: 20),
-          TextButton.icon(
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            onPressed: _onScanSuccess,
-            icon: const Icon(Icons.skip_next),
-            label: const Text('Bỏ qua quét nhanh (Test)', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- STEP 3: Form Step ---
+  // --- STEP 2: Form Step ---
   Widget _buildFormStep() {
     final isLocal = _registrationType == 'local';
 
@@ -421,8 +320,8 @@ class _VolunteerRegistrationScreenState extends ConsumerState<VolunteerRegistrat
                 Expanded(
                   child: Text(
                     isLocal
-                        ? '📍 LIÊN KẾT: TRẠM-PẮC-LIỀNG (Đăng ký tại chỗ)'
-                        : '🌐 LIÊN KẾT: DP-TỪ-XA-01 (Đăng ký từ xa)',
+                        ? '📍 LIÊN KẾT: ${_scannedStationCode == null ? "(chưa quét)" : _shortCode(_scannedStationCode!)} (Đăng ký tại chỗ)'
+                        : '🌐 ĐĂNG KÝ TỪ XA — Ban Chỉ huy xã sẽ liên hệ điều phối',
                     style: TextStyle(
                       color: isLocal ? Colors.blue.shade900 : Colors.green.shade900,
                       fontWeight: FontWeight.bold,

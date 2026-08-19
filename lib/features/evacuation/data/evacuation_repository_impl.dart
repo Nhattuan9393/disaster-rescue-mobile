@@ -1,14 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../domain/evacuation_point_model.dart';
-import '../domain/evacuation_order_model.dart';
-import '../domain/i_evacuation_repository.dart';
+
 import '../../../../core/utils/logger.dart';
+import '../../notification/data/notification_inbox_service.dart';
+import '../../notification/domain/app_notification.dart';
+import '../domain/evacuation_order_model.dart';
+import '../domain/evacuation_point_model.dart';
+import '../domain/i_evacuation_repository.dart';
 
 class EvacuationRepositoryImpl implements IEvacuationRepository {
   final FirebaseFirestore _firestore;
+  final NotificationInboxRepository _inbox;
 
-  EvacuationRepositoryImpl({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  EvacuationRepositoryImpl({
+    FirebaseFirestore? firestore,
+    NotificationInboxRepository? inbox,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _inbox = inbox ?? NotificationInboxRepository();
 
   CollectionReference<Map<String, dynamic>> get _pointsCollection =>
       _firestore.collection('evacuation_points');
@@ -16,67 +23,39 @@ class EvacuationRepositoryImpl implements IEvacuationRepository {
   CollectionReference<Map<String, dynamic>> get _ordersCollection =>
       _firestore.collection('evacuation_orders');
 
-  // Khởi tạo các điểm sơ tán mẫu mặc định nếu Firestore rỗng
   Future<void> _seedDefaultPointsIfEmpty() async {
-    final snapshot = await _pointsCollection.get();
+    final snapshot = await _pointsCollection.limit(1).get();
     if (snapshot.docs.isEmpty) {
-      AppLogger.i('Khởi tạo danh sách Điểm sơ tán mẫu lên Firestore...');
-      final defaultPoints = [
-        const EvacuationPointModel(
+      AppLogger.i('Seed điểm sơ tán mặc định (chỉ chạy 1 lần trên project mới)');
+      final defaults = const [
+        EvacuationPointModel(
           id: 'evac_01',
           name: 'Trường TH Bình Liêu',
           latitude: 21.5430,
           longitude: 107.3990,
           capacity: 200,
-          currentCount: 45,
+          currentCount: 0,
           status: 'open',
           supplies: ['Chăn', 'Nước', 'Lương khô', 'Thuốc'],
           inChargeName: 'Cô Vũ Thị Lan',
           inChargePhone: '0203 456 789',
-          checkedInHouseholdIds: ['household_my_family'],
+          checkedInHouseholdIds: [],
         ),
-        const EvacuationPointModel(
+        EvacuationPointModel(
           id: 'evac_02',
           name: 'Nhà văn hóa Thôn Pắc Liềng',
           latitude: 21.5450,
           longitude: 107.4020,
           capacity: 120,
-          currentCount: 118,
-          status: 'nearly_full',
+          currentCount: 0,
+          status: 'open',
           supplies: ['Nước', 'Thuốc'],
           inChargeName: 'Bác Nông Văn Sang',
           inChargePhone: '0203 987 654',
           checkedInHouseholdIds: [],
         ),
-        const EvacuationPointModel(
-          id: 'evac_03',
-          name: 'UBND xã Bình Liêu',
-          latitude: 21.5410,
-          longitude: 107.3950,
-          capacity: 150,
-          currentCount: 150,
-          status: 'full',
-          supplies: ['Chăn', 'Nước', 'Lương khô'],
-          inChargeName: 'Trần Văn Bình',
-          inChargePhone: '0203 123 456',
-          checkedInHouseholdIds: [],
-        ),
-        const EvacuationPointModel(
-          id: 'evac_04',
-          name: 'Trạm Y tế Khe Tiền',
-          latitude: 21.5380,
-          longitude: 107.3900,
-          capacity: 60,
-          currentCount: 0,
-          status: 'closed',
-          supplies: [],
-          inChargeName: 'Y sĩ Hoàng Thị Mơ',
-          inChargePhone: '0203 333 999',
-          checkedInHouseholdIds: [],
-        ),
       ];
-
-      for (final p in defaultPoints) {
+      for (final p in defaults) {
         await _pointsCollection.doc(p.id).set(p.toJson());
       }
     }
@@ -85,10 +64,10 @@ class EvacuationRepositoryImpl implements IEvacuationRepository {
   @override
   Stream<List<EvacuationPointModel>> watchEvacuationPoints() {
     _seedDefaultPointsIfEmpty();
-    return _pointsCollection.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
+    return _pointsCollection.snapshots().map((snap) {
+      return snap.docs.map((d) {
+        final data = Map<String, dynamic>.from(d.data());
+        data['id'] = d.id;
         return EvacuationPointModel.fromJson(data);
       }).toList();
     });
@@ -99,10 +78,12 @@ class EvacuationRepositoryImpl implements IEvacuationRepository {
     return _ordersCollection
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
+        .map((snap) {
+      return snap.docs.map((d) {
+        final data = Map<String, dynamic>.from(d.data());
+        data['id'] = d.id;
+        final ts = data['timestamp'];
+        if (ts is Timestamp) data['timestamp'] = ts.toDate().toIso8601String();
         return EvacuationOrderModel.fromJson(data);
       }).toList();
     });
@@ -110,71 +91,81 @@ class EvacuationRepositoryImpl implements IEvacuationRepository {
 
   @override
   Future<void> createEvacuationPoint(EvacuationPointModel point) async {
-    try {
-      await _pointsCollection.doc(point.id).set(point.toJson()).timeout(const Duration(milliseconds: 500));
-    } catch (_) {}
+    await _pointsCollection.doc(point.id).set(point.toJson());
   }
 
   @override
   Future<void> updateEvacuationPoint(EvacuationPointModel point) async {
-    try {
-      await _pointsCollection.doc(point.id).update(point.toJson()).timeout(const Duration(milliseconds: 500));
-    } catch (_) {}
+    await _pointsCollection.doc(point.id).update(point.toJson());
   }
 
   @override
   Future<void> broadcastEvacuationOrder(EvacuationOrderModel order) async {
-    try {
-      await _ordersCollection.doc(order.id).set(order.toJson()).timeout(const Duration(milliseconds: 500));
-      
-      // DR-032: Ghi log sự kiện phát lệnh sơ tán
-      _firestore.collection('event_logs').add({
-        'id': order.id,
-        'sosId': order.id,
-        'action': 'broadcast_evacuation',
-        'message': 'PHÁT LỆNH SƠ TÁN KHẨN CẤP tới các thôn: ${order.targetVillages.join(", ")}.',
-        'actorId': order.senderId,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-    } catch (e) {
-      AppLogger.w('Đã lưu lệnh sơ tán vào local cache. Đóng màn hình ngay.');
+    final data = order.toJson();
+    data['timestamp'] = FieldValue.serverTimestamp();
+    await _ordersCollection.doc(order.id).set(data);
+
+    await _firestore.collection('event_logs').add({
+      'orderId': order.id,
+      'action': 'broadcast_evacuation',
+      'message':
+          'PHÁT LỆNH SƠ TÁN KHẨN CẤP tới ${order.targetVillages.join(", ")}',
+      'actorId': order.senderId,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    // Push notification cross-device: mọi hộ trong sector đích nhận toast
+    final recipientTopics = <String>[];
+    for (final sectorId in order.targetSectorIds) {
+      recipientTopics.add('sector_$sectorId');
     }
+    if (recipientTopics.isEmpty) {
+      // Fallback theo tên thôn — sector default
+      recipientTopics.add('sector_sector_pac_lieng');
+    }
+    await _inbox.push(
+      kind: AppNotificationKind.evacuationOrder,
+      title: '🚨 LỆNH SƠ TÁN KHẨN CẤP',
+      body:
+          '${order.contentVi.isNotEmpty ? order.contentVi : "Sơ tán tới ${order.targetPointName}"} — điểm: ${order.targetPointName}',
+      recipientTopics: recipientTopics,
+      actionRoute: '/evacuation-points',
+      data: {'orderId': order.id, 'pointId': order.targetPointId},
+      createdBy: order.senderId,
+    );
   }
 
   @override
   Future<void> checkInHousehold(String pointId, String householdId) async {
-    try {
-      final docRef = _pointsCollection.doc(pointId);
-      await _firestore.runTransaction((transaction) async {
-        final snapshot = await transaction.get(docRef);
-        if (snapshot.exists) {
-          final point = EvacuationPointModel.fromJson(snapshot.data()!);
-          final updatedCheckedIn = List<String>.from(point.checkedInHouseholdIds);
-          if (!updatedCheckedIn.contains(householdId)) {
-            updatedCheckedIn.add(householdId);
-          }
-          transaction.update(docRef, {
-            'currentCount': point.currentCount + 1,
-            'checkedInHouseholdIds': updatedCheckedIn,
-          });
-        }
-      }).timeout(const Duration(milliseconds: 500));
-
-      // Cập nhật an toàn cho hộ
-      _firestore.collection('households').doc(householdId).set({
-        'safetyStatus': 'safe',
-        'evacuatedPointId': pointId,
-        'lastConfirmed': DateTime.now().toIso8601String(),
-      }, SetOptions(merge: true));
-
-      // Ghi nhận nguồn xác thực an toàn check-in
-      _firestore.collection('safety_confirmations').add({
-        'householdId': householdId,
-        'status': 'safe',
-        'source': 'evacuation_checkin',
-        'confidence': 95, // Nguồn Check-in tại điểm sơ tán đạt 95% độ tin cậy
-        'timestamp': DateTime.now().toIso8601String(),
+    final docRef = _pointsCollection.doc(pointId);
+    await _firestore.runTransaction((tx) async {
+      final snap = await tx.get(docRef);
+      if (!snap.exists) return;
+      final point = EvacuationPointModel.fromJson(snap.data()!);
+      final ids = List<String>.from(point.checkedInHouseholdIds);
+      if (!ids.contains(householdId)) ids.add(householdId);
+      tx.update(docRef, {
+        'currentCount': point.currentCount + 1,
+        'checkedInHouseholdIds': ids,
       });
-    } catch (_) {}
+    });
+
+    // Cập nhật an toàn cho hộ — nguồn 95 điểm (evacuationCheckin) theo SRS
+    await _firestore.collection('households').doc(householdId).set({
+      'safetyStatus': 'safe',
+      'evacuatedPointId': pointId,
+      'lastConfirmedAt': FieldValue.serverTimestamp(),
+      'safetySource': 'evacuation_checkin',
+      'safetyConfidence': 95,
+    }, SetOptions(merge: true));
+
+    await _firestore.collection('safety_confirmations').add({
+      'householdId': householdId,
+      'status': 'safe',
+      'source': 'evacuation_checkin',
+      'confidence': 95,
+      'evacuationPointId': pointId,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
   }
 }

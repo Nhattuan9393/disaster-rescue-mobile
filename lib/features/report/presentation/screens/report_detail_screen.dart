@@ -27,7 +27,7 @@ class ReportDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(reportControllerProvider.notifier);
-    const hasPhotos = true; // Mặc định ảnh được giả lập xác minh
+    final photos = report.photoUrls;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -48,52 +48,65 @@ class ReportDetailScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Khung ảnh đính kèm (nếu có hoặc ảnh mẫu)
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('🖼️', style: TextStyle(fontSize: 28)),
-                          SizedBox(height: 4),
-                          Text('Ảnh 1 · GPS Verified', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
+            // 1. Khung ảnh đính kèm — hiện ảnh thật từ Firebase Storage.
+            if (photos.isEmpty)
+              Container(
+                width: double.infinity,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.image_not_supported, color: Colors.grey.shade500, size: 26),
+                      const SizedBox(height: 4),
+                      Text('Người báo không đính kèm ảnh',
+                          style: TextStyle(color: Colors.grey.shade700, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('🖼️', style: TextStyle(fontSize: 28)),
-                          SizedBox(height: 4),
-                          Text('Ảnh 2 · GPS Verified', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                        ],
+              )
+            else
+              SizedBox(
+                height: 120,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: photos.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (ctx, i) {
+                    final url = photos[i];
+                    return GestureDetector(
+                      onTap: () => _showFullscreen(context, url, i + 1, photos.length),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          url,
+                          width: 140,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (ctx, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              width: 140, height: 120,
+                              color: Colors.grey.shade100,
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 140, height: 120,
+                            color: Colors.grey.shade200,
+                            child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
             const SizedBox(height: 14),
 
             // 2. Tiêu đề & Nội dung mô tả
@@ -223,7 +236,7 @@ class ReportDetailScreen extends ConsumerWidget {
                     ),
                   ),
                   const Divider(height: 20),
-                  _buildScoreRow('Có ảnh hiện trường đính kèm', '+20 ✅', hasPhotos),
+                  _buildScoreRow('Có ảnh hiện trường đính kèm', '+20 ✅', photos.isNotEmpty),
                   _buildScoreRow('GPS người báo cách nạn nhân < 500m', '+15 ✅', _calculatedDistanceMeters < 500),
                   _buildScoreRow('Nhiều người báo cùng khu vực (Cross-ref)', '+25 ✅', true),
                   _buildScoreRow('Tài khoản đã xác thực thông tin', '+10 ✅', true),
@@ -384,6 +397,53 @@ class ReportDetailScreen extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showFullscreen(BuildContext context, String url, int idx, int total) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(8),
+        backgroundColor: Colors.black,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                  Expanded(
+                    child: Text('Ảnh $idx / $total',
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+            InteractiveViewer(
+              maxScale: 4,
+              child: Image.network(
+                url,
+                fit: BoxFit.contain,
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(color: Colors.white),
+                      ),
+                errorBuilder: (_, __, ___) => const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Icon(Icons.broken_image, color: Colors.white54, size: 60),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

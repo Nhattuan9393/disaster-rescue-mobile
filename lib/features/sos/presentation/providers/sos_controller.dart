@@ -6,6 +6,7 @@ import '../../../../core/utils/logger.dart';
 import '../../domain/sos_model.dart';
 import '../../domain/sos_status.dart';
 import '../../domain/sos_priority_calculator.dart';
+import '../../data/sos_delivery_service.dart';
 import '../../data/sos_sync_service.dart';
 import '../../../household/domain/household_model.dart';
 
@@ -119,15 +120,25 @@ class SosController extends StateNotifier<SosState> {
       );
 
       final repo = _ref.read(sosRepositoryProvider);
-      await repo.sendSosRequest(sosRequest);
+      // repo tự lưu Hive queue TRƯỚC — kể cả throw thì delivery service vẫn
+      // báo firestoreQueue = delivered đúng thực tế.
+      try {
+        await repo.sendSosRequest(sosRequest);
+      } catch (e) {
+        AppLogger.w('Firestore write throw — vẫn còn nguyên trong Hive queue: $e');
+      }
+
+      // Khởi động điều phối gửi đa kênh (queue + auto-sync + silentSms + BLE).
+      _ref.read(sosDeliveryServiceProvider.notifier)
+          .beginDelivery(sosRequest, isOnline: isOnline);
 
       String msg = '';
       if (isFallback) {
         msg = 'Gửi SOS thành công với vị trí nhà đăng ký (Do chưa định vị được thiết bị)!';
       } else {
-        msg = isOnline 
-            ? 'Đã gửi tín hiệu SOS khẩn cấp thành công!' 
-            : 'Đã lưu SOS vào hàng đợi. Sẽ gửi tự động khi có mạng!';
+        msg = isOnline
+            ? 'Đã gửi tín hiệu SOS khẩn cấp thành công!'
+            : 'Đã lưu SOS an toàn — hệ thống đang thử các kênh dự phòng.';
       }
 
       state = state.copyWith(

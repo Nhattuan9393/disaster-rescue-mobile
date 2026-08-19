@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/services/connectivity_service.dart';
+import '../../../auth/presentation/providers/auth_controller.dart';
+import '../../../household/data/household_repository.dart';
 import '../providers/report_provider.dart';
 
 class AssistanceRequestScreen extends ConsumerStatefulWidget {
@@ -83,19 +85,29 @@ class _AssistanceRequestScreenState extends ConsumerState<AssistanceRequestScree
 
     final isOnline = ref.read(isOnlineProvider);
     final controller = ref.read(reportControllerProvider.notifier);
+    final user = ref.read(currentUserProvider);
+    final household = ref.read(myHouseholdStreamProvider).value;
 
-    // Gửi yêu cầu hỗ trợ (Chủ hộ tự gửi cho gia đình mình)
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Vui lòng đăng nhập trước khi gửi yêu cầu.'),
+            backgroundColor: Colors.red),
+      );
+      return;
+    }
+
     await controller.submitAssistanceRequest(
-      householdId: 'household_my_family', // Lấy từ user auth/profile giả lập
-      reporterId: 'current_user',
-      latitude: 21.5412, // Vị trí giả lập từ GPS hộ dân
-      longitude: 107.3985,
-      address: 'Thôn Pắc Liềng, xã Bình Liêu',
+      householdId: household?.id ?? user.householdId ?? user.uid,
+      reporterId: user.uid,
+      latitude: household?.latitude ?? 21.5412,
+      longitude: household?.longitude ?? 107.3985,
+      address: household?.address ?? 'Thôn Pắc Liềng, xã Bình Liêu',
       description: _noteController.text.trim(),
       neededSupports: _selectedSupports,
       urgencyWindow: _urgencyWindow,
       targetEvacuationPointId: _selectedEvacPoint,
-      confidenceScore: 100, // Chủ hộ tự gửi nên độ tin cậy tuyệt đối
+      confidenceScore: 100,
     );
 
     final state = ref.read(reportControllerProvider);

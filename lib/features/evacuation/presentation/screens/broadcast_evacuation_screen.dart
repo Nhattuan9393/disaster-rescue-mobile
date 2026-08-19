@@ -5,6 +5,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/widgets/map_widget.dart';
+import '../../../auth/presentation/providers/auth_controller.dart';
 import '../providers/evacuation_provider.dart';
 import '../../domain/evacuation_order_model.dart';
 
@@ -31,6 +32,30 @@ class _BroadcastEvacuationScreenState extends ConsumerState<BroadcastEvacuationS
 
   final LatLng _defaultCenter = const LatLng(21.5430, 107.3990);
 
+  List<LatLng> _floodPolygon = const [];
+
+  Future<void> _openDrawFloodArea() async {
+    final result = await Navigator.of(context).push<List<LatLng>>(
+      MaterialPageRoute(
+        builder: (_) => _DrawFloodAreaScreen(
+          center: _defaultCenter,
+          initialPoints: _floodPolygon,
+        ),
+      ),
+    );
+    if (result != null) {
+      setState(() => _floodPolygon = result);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Đã lưu vùng ngập (${result.length} điểm).'),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _contentViController.dispose();
@@ -39,7 +64,26 @@ class _BroadcastEvacuationScreenState extends ConsumerState<BroadcastEvacuationS
   }
 
   void _broadcastOrder() async {
+    if (_selectedVillages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn ít nhất 1 thôn')),
+      );
+      return;
+    }
     final repo = ref.read(evacuationRepositoryProvider);
+    final currentUser = ref.read(currentUserProvider);
+
+    // Map tên thôn → sectorId để push đúng topic
+    final sectorMap = <String, String>{
+      'Thôn Pắc Liềng': 'sector_pac_lieng',
+      'Thôn Nà Lầu': 'sector_na_lau',
+      'Thôn Khe Tiền': 'sector_khe_tien',
+    };
+    final sectorIds = _selectedVillages
+        .map((v) => sectorMap[v] ?? 'sector_pac_lieng')
+        .toSet()
+        .toList();
+
     final order = EvacuationOrderModel(
       id: const Uuid().v4(),
       targetVillages: _selectedVillages,
@@ -47,7 +91,8 @@ class _BroadcastEvacuationScreenState extends ConsumerState<BroadcastEvacuationS
       targetPointName: _targetPointName,
       contentVi: _contentViController.text.trim(),
       contentTay: _includeTayLanguage ? _contentTayController.text.trim() : '',
-      senderId: 'admin_commune',
+      senderId: currentUser?.uid ?? 'unknown',
+      targetSectorIds: sectorIds,
       timestamp: DateTime.now(),
     );
 
@@ -95,7 +140,7 @@ class _BroadcastEvacuationScreenState extends ConsumerState<BroadcastEvacuationS
             const SizedBox(height: 8),
 
             Container(
-              height: 130,
+              height: 160,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.red.shade300),
@@ -107,29 +152,85 @@ class _BroadcastEvacuationScreenState extends ConsumerState<BroadcastEvacuationS
                     CoreMapWidget(
                       center: _defaultCenter,
                       zoom: 14,
+                      polygons: _floodPolygon.length >= 3
+                          ? [
+                              Polygon(
+                                points: _floodPolygon,
+                                color: Colors.red.withValues(alpha: 0.25),
+                                borderColor: Colors.red.shade700,
+                                borderStrokeWidth: 2,
+                              ),
+                            ]
+                          : const [],
                       markers: [
-                        Marker(
-                          point: _defaultCenter,
-                          width: 44,
-                          height: 44,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.red.withValues(alpha: 0.3),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.red, width: 2),
+                        if (_floodPolygon.isEmpty)
+                          Marker(
+                            point: _defaultCenter,
+                            width: 44,
+                            height: 44,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red.withValues(alpha: 0.3),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.red, width: 2),
+                              ),
+                              child: const Center(child: Icon(Icons.warning, color: Colors.red, size: 22)),
                             ),
-                            child: const Center(child: Icon(Icons.warning, color: Colors.red, size: 22)),
                           ),
-                        ),
+                        for (final p in _floodPolygon)
+                          Marker(
+                            point: p,
+                            width: 14,
+                            height: 14,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade800,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
+                    if (_floodPolygon.length >= 3)
+                      Positioned(
+                        left: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(color: Colors.red.shade700, borderRadius: BorderRadius.circular(6)),
+                          child: Text(
+                            '${_floodPolygon.length} điểm vùng ngập',
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
                     Positioned(
                       right: 8,
                       bottom: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.9), borderRadius: BorderRadius.circular(6)),
-                        child: const Text('✎ Vẽ vùng ngập khẩn cấp trên bản đồ', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold)),
+                      child: GestureDetector(
+                        onTap: _openDrawFloodArea,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade700,
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4, offset: const Offset(0, 2)),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.edit_location_alt, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                _floodPolygon.isEmpty ? 'Vẽ vùng ngập' : 'Chỉnh sửa vùng',
+                                style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -329,6 +430,161 @@ class _BroadcastEvacuationScreenState extends ConsumerState<BroadcastEvacuationS
           }
         });
       },
+    );
+  }
+}
+
+class _DrawFloodAreaScreen extends StatefulWidget {
+  final LatLng center;
+  final List<LatLng> initialPoints;
+  const _DrawFloodAreaScreen({required this.center, required this.initialPoints});
+
+  @override
+  State<_DrawFloodAreaScreen> createState() => _DrawFloodAreaScreenState();
+}
+
+class _DrawFloodAreaScreenState extends State<_DrawFloodAreaScreen> {
+  late List<LatLng> _points;
+
+  @override
+  void initState() {
+    super.initState();
+    _points = List<LatLng>.from(widget.initialPoints);
+  }
+
+  void _addPoint(LatLng p) => setState(() => _points.add(p));
+  void _undo() {
+    if (_points.isEmpty) return;
+    setState(() => _points.removeLast());
+  }
+  void _clear() => setState(() => _points.clear());
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.red.shade800,
+        foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Vẽ vùng ngập khẩn cấp',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        actions: [
+          IconButton(icon: const Icon(Icons.undo), tooltip: 'Bỏ điểm cuối', onPressed: _undo),
+          IconButton(icon: const Icon(Icons.delete_outline), tooltip: 'Xoá tất cả', onPressed: _clear),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: CoreMapWidget(
+              center: widget.center,
+              zoom: 14,
+              onTap: _addPoint,
+              polygons: _points.length >= 3
+                  ? [
+                      Polygon(
+                        points: _points,
+                        color: Colors.red.withValues(alpha: 0.25),
+                        borderColor: Colors.red.shade700,
+                        borderStrokeWidth: 2.5,
+                      ),
+                    ]
+                  : const [],
+              markers: [
+                for (int i = 0; i < _points.length; i++)
+                  Marker(
+                    point: _points[i],
+                    width: 22,
+                    height: 22,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade700,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 12,
+            left: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 6, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.touch_app, color: Colors.red.shade700, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _points.length < 3
+                          ? 'Chạm lên bản đồ để thêm điểm (tối thiểu 3 điểm) — đã có ${_points.length}/3'
+                          : 'Đã có ${_points.length} điểm. Bấm "Lưu vùng" khi xong.',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Huỷ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.check, color: Colors.white),
+                    label: Text(
+                      _points.length >= 3 ? 'Lưu vùng (${_points.length} điểm)' : 'Cần ≥ 3 điểm',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                    ),
+                    onPressed: _points.length >= 3 ? () => Navigator.pop(context, _points) : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -167,7 +167,7 @@ class _BulkImportResidentsScreenState extends State<BulkImportResidentsScreen> {
   }
 
   // Mô phỏng tải và hiển thị preview
-  void _simulateLoadingPreview(_ImportSource src) {
+  void _simulateLoadingPreview(_ImportSource src) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -182,16 +182,21 @@ class _BulkImportResidentsScreenState extends State<BulkImportResidentsScreen> {
       ),
     );
 
-    Future.delayed(const Duration(milliseconds: 800), () {
-      Navigator.pop(context); // Đóng loading dialog
-      setState(() {
-        _selectedSource = src;
-        _hasPreview = true;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('📊 Đã tải thành công 120 hộ dân vào bảng Preview!'), backgroundColor: Colors.blue),
-      );
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // Đóng loading dialog
+    setState(() {
+      _selectedSource = src;
+      _hasPreview = true;
+      _hasDuplicate = true;
+      _importDone = false;
     });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('📊 Đã tải thành công 120 hộ dân vào bảng Preview!'),
+        backgroundColor: Colors.blue,
+      ),
+    );
   }
 
   // Xử lý trùng số điện thoại

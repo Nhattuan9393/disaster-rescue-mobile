@@ -6,6 +6,10 @@ class EvacuationOrderModel {
   final String contentVi;
   final String contentTay;
   final String senderId;
+
+  /// Danh sách sectorId đích — dùng để push đúng topic.
+  final List<String> targetSectorIds;
+
   final DateTime timestamp;
 
   const EvacuationOrderModel({
@@ -16,6 +20,7 @@ class EvacuationOrderModel {
     required this.contentVi,
     required this.contentTay,
     required this.senderId,
+    this.targetSectorIds = const [],
     required this.timestamp,
   });
 
@@ -28,6 +33,7 @@ class EvacuationOrderModel {
       'contentVi': contentVi,
       'contentTay': contentTay,
       'senderId': senderId,
+      'targetSectorIds': targetSectorIds,
       'timestamp': timestamp.toIso8601String(),
     };
   }
@@ -35,12 +41,19 @@ class EvacuationOrderModel {
   factory EvacuationOrderModel.fromJson(Map<String, dynamic> json) {
     return EvacuationOrderModel(
       id: json['id'] as String? ?? '',
-      targetVillages: (json['targetVillages'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      targetVillages: (json['targetVillages'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       targetPointId: json['targetPointId'] as String? ?? '',
       targetPointName: json['targetPointName'] as String? ?? '',
       contentVi: json['contentVi'] as String? ?? '',
       contentTay: json['contentTay'] as String? ?? '',
       senderId: json['senderId'] as String? ?? '',
+      targetSectorIds: (json['targetSectorIds'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
       timestamp: json['timestamp'] != null
           ? DateTime.parse(json['timestamp'] as String)
           : DateTime.now(),

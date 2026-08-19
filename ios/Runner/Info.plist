@@ -4,6 +4,18 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>DisasterRescue cần camera để chụp ảnh hiện trường thiên tai, ảnh bàn giao vật tư cứu trợ, và quét mã QR điểm danh tại điểm sơ tán.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DisasterRescue cần truy cập thư viện ảnh để bạn đính kèm ảnh vào báo cáo tình hình thiên tai và gói cứu trợ.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>DisasterRescue cần lưu ảnh chụp bàn giao vào thư viện ảnh làm chứng cứ.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>DisasterRescue cần vị trí thiết bị để gửi toạ độ SOS chính xác cho Ban chỉ huy khi bạn bấm cầu cứu.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>DisasterRescue theo dõi vị trí nền để cập nhật toạ độ SOS liên tục cho đội cứu hộ tìm đến — chỉ trong lúc SOS đang mở.</string>
+	<key>NSUserNotificationUsageDescription</key>
+	<string>DisasterRescue gửi thông báo khẩn cấp: lệnh sơ tán, gán đội cứu hộ, và trạng thái SOS của gia đình bạn.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

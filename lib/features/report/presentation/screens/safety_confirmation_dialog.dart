@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../auth/presentation/providers/auth_controller.dart';
+
 class SafetyConfirmationDialog extends ConsumerWidget {
   const SafetyConfirmationDialog({super.key});
 
@@ -14,21 +16,38 @@ class SafetyConfirmationDialog extends ConsumerWidget {
   }
 
   void _confirmSafety(BuildContext context, WidgetRef ref, bool isSafe) async {
+    final user = ref.read(currentUserProvider);
+    final householdId = user?.householdId;
+    if (householdId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bạn chưa liên kết với hộ dân nào.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      Navigator.of(context).pop();
+      return;
+    }
     try {
-      // Ghi nhận trạng thái an toàn lên Firestore
+      // Nguồn tự app (selfApp) = 90 điểm theo SRS
       await FirebaseFirestore.instance.collection('safety_confirmations').add({
-        'householdId': 'household_my_family', // giả lập hộ của user hiện tại
+        'householdId': householdId,
         'status': isSafe ? 'safe' : 'need_help',
-        'source': 'system_triggered_dialog', // nguồn hệ thống tự động hỏi
-        'confidence': 100, // nguồn tự xác nhận độ tin cậy 100%
-        'timestamp': DateTime.now().toIso8601String(),
+        'source': 'selfApp',
+        'confidence': 90,
+        'createdBy': user!.uid,
+        'timestamp': FieldValue.serverTimestamp(),
       });
 
-      // Cập nhật trạng thái an toàn của hộ
-      await FirebaseFirestore.instance.collection('households').doc('household_my_family').update({
+      await FirebaseFirestore.instance
+          .collection('households')
+          .doc(householdId)
+          .set({
         'safetyStatus': isSafe ? 'safe' : 'need_help',
-        'lastConfirmed': DateTime.now().toIso8601String(),
-      });
+        'safetySource': 'selfApp',
+        'safetyConfidence': 90,
+        'lastConfirmedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

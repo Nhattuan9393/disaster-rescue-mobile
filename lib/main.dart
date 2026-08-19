@@ -8,36 +8,33 @@ import 'core/services/hive_service.dart';
 import 'core/utils/logger.dart';
 import 'features/sos/data/sos_sync_service.dart';
 import 'features/report/data/report_sync_service.dart';
-import 'core/services/api_sync_service.dart';
+import 'features/notification/data/push_notification_service.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // DR-006: Khởi tạo Hive Offline Infrastructure
+
+  // DR-006: Khởi tạo Hive Offline Infrastructure (chỉ dùng cho queue/cache, không phải shared state)
   await HiveService.init();
 
-  // Bắt đầu chạy ngầm đồng bộ hóa thời gian thực qua kvdb.io
-  ApiSyncService.startPolling();
-
-  // DR-002, DR-004: Khởi tạo Firebase với cấu hình Dummy (Emulator)
+  // DR-002, DR-004: Firebase — Auth + Firestore + FCM + Storage
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    AppLogger.i('Firebase initialized successfully');
+    AppLogger.i('Firebase initialized');
   } catch (e, stack) {
-    AppLogger.e('Failed to initialize Firebase', error: e, stackTrace: stack);
+    AppLogger.e('Firebase initialize thất bại — kiểm tra firebase_options.dart',
+        error: e, stackTrace: stack);
   }
 
-  // Tạo ProviderContainer để khởi tạo các Service chạy ngầm độc lập với UI
   final container = ProviderContainer();
 
-  // DR-020: Đăng ký lắng nghe đồng bộ SOS tự động
+  // DR-020: Đăng ký các service chạy ngầm (offline sync + FCM)
   container.read(sosSyncServiceProvider);
-  // Đồng bộ báo cáo Flow B/C ngoại tuyến
   container.read(reportSyncServiceProvider);
+  // FCM push — kích hoạt sớm để nhận token & subscribe topic ngay
+  await container.read(pushNotificationServiceProvider).initialize();
 
-  // DR-005: Bọc toàn bộ app trong UncontrolledProviderScope để chia sẻ container
   runApp(
     UncontrolledProviderScope(
       container: container,

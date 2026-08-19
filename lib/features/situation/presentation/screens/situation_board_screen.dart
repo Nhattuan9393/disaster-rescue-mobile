@@ -1,34 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../../../core/widgets/map_widget.dart';
+import '../../../auth/presentation/providers/auth_controller.dart';
+import '../../../auth/domain/user_model.dart';
 
-class SituationBoardScreen extends StatelessWidget {
+class SituationBoardScreen extends ConsumerWidget {
   const SituationBoardScreen({super.key});
 
   final LatLng _defaultCenter = const LatLng(21.5430, 107.3990);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final isAdmin = user != null && user.role == UserRole.admin;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.red.shade700,
-        elevation: 0,
+        backgroundColor: isAdmin ? Colors.blue.shade900 : Colors.red.shade700,
+        elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
             } else {
-              context.go('/login');
+              context.go(isAdmin ? '/admin' : '/login');
             }
           },
         ),
-        title: const Text(
-          '📊 Tình hình Thiên tai',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+        title: Text(
+          isAdmin ? '📊 Bảng Tình Hình Chỉ Huy Xã' : '📊 Tình hình Thiên tai Xã',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
         ),
         actions: [
           Center(
@@ -36,12 +42,12 @@ class SituationBoardScreen extends StatelessWidget {
               margin: const EdgeInsets.only(right: 14),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text(
-                'Không cần đăng nhập',
-                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              child: Text(
+                isAdmin ? 'Cán bộ Chỉ huy' : 'Không cần đăng nhập',
+                style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -56,21 +62,25 @@ class SituationBoardScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEBEE),
+                color: isAdmin ? Colors.blue.shade50 : const Color(0xFFFFEBEE),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.red.shade300),
+                border: Border.all(color: isAdmin ? Colors.blue.shade300 : Colors.red.shade300),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '🌊 LŨ LỤT — Xã Bình Liêu, Quảng Ninh',
-                    style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 14),
+                    style: TextStyle(
+                      color: isAdmin ? Colors.blue.shade900 : Colors.red.shade900,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Đang diễn ra · Cập nhật 09:52 hôm nay',
-                    style: TextStyle(color: Colors.black54, fontSize: 10.5),
+                  Text(
+                    isAdmin ? 'Chế độ: Đang chỉ huy chiến sự · Cập nhật thời gian thực' : 'Đang diễn ra · Cập nhật 09:52 hôm nay',
+                    style: const TextStyle(color: Colors.black54, fontSize: 10.5),
                   ),
                 ],
               ),
@@ -79,7 +89,7 @@ class SituationBoardScreen extends StatelessWidget {
 
             // 2. Khung bản đồ tình hình rủi ro khẩn cấp
             Container(
-              height: 140,
+              height: 150,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade300),
@@ -124,9 +134,9 @@ class SituationBoardScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // 3. SỐ LIỆU TỔNG HỢP (SỐ TUYỆT ĐỐI)
-            const Text(
-              'SỐ LIỆU TỔNG HỢP (SỐ TUYỆT ĐỐI)',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
+            Text(
+              isAdmin ? 'SỐ LIỆU TỔNG HỢP (HỆ THỐNG CHỈ HUY)' : 'SỐ LIỆU TỔNG HỢP (SỐ TUYỆT ĐỐI)',
+              style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
             ),
             const SizedBox(height: 8),
 
@@ -202,25 +212,66 @@ class SituationBoardScreen extends StatelessWidget {
                 Expanded(child: _buildPhotoBox('🛶 Đội cứu hộ tác chiến')),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            // Nút bấm cứu hộ khẩn cấp
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade700,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                onPressed: () => context.push('/resident'),
-                child: const Text(
-                  '🆘 Tôi cần cứu hộ — Đăng nhập / Đăng ký',
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13.5),
+            // Nút bấm cứu hộ khẩn cấp hoặc Nút quản trị
+            if (isAdmin)
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade800,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => context.push('/broadcast-evacuation'),
+                        icon: const Icon(Icons.campaign, color: Colors.white, size: 18),
+                        label: const Text(
+                          'PHÁT LỆNH SƠ TÁN',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade900,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => context.push('/rescue-teams'),
+                        icon: const Icon(Icons.people, color: Colors.white, size: 18),
+                        label: const Text(
+                          'ĐỘI CỨU HỘ',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade700,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  onPressed: () => context.push('/resident'),
+                  child: const Text(
+                    '🆘 Tôi cần cứu hộ — Đăng nhập / Đăng ký',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13.5),
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

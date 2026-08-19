@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Chú thích:
+// - Chỉ user đã đăng nhập được phép upload / đọc ảnh — người ngoài không rình
+//   được ảnh SOS.
+// - Cho phép upload dưới các root folder cố định trong app; chặn upload
+//   ngẫu nhiên toàn bucket.
+// - Giới hạn 8MB / file, contentType phải là image/*.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthed() {
+      return request.auth != null;
+    }
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    function sizeOk() {
+      return request.resource.size < 8 * 1024 * 1024;
+    }
+
+    // Ảnh báo cáo (assistance + situation)
+    match /reports/{sub}/{file} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && isImage() && sizeOk();
+    }
+
+    // Ảnh hiện trường SOS (bàn giao, hoàn thành, xác nhận an toàn)
+    match /sos/{sosId}/{sub}/{file} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && isImage() && sizeOk();
+    }
+
+    // Ảnh gói cứu trợ nhập kho
+    match /donations/{packageId}/{file} {
+      allow read: if isAuthed();
+      allow write: if isAuthed() && isImage() && sizeOk();
+    }
+
+    // Default: chặn mọi thứ khác
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

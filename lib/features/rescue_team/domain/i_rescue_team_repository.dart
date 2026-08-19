@@ -19,4 +19,10 @@ abstract class IRescueTeamRepository {
 
   /// Hoàn thành nhiệm vụ cứu nạn (Bấm "Hoàn thành")
   Future<void> completeMission(String teamId, String sosId);
+
+  /// Phê duyệt đội cứu hộ vãng lai
+  Future<void> approveVolunteerTeam(String id);
+
+  /// Từ chối/xóa đội cứu hộ vãng lai
+  Future<void> rejectVolunteerTeam(String id);
 }

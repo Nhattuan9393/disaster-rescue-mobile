@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/map_widget.dart';
 import 'package:flutter_map/flutter_map.dart';
 
@@ -14,33 +15,262 @@ class HouseholdDetailAdminScreen extends StatefulWidget {
 
 class _HouseholdDetailAdminScreenState extends State<HouseholdDetailAdminScreen> {
   bool _isSafe = false;
+  bool _teamDispatched = false;
+  bool _sosCreated = false;
+
+  static const String _householdPhone = '0987654321';
+  static const String _householdName = 'Nguyễn Văn A';
+
+  Future<void> _callHousehold() async {
+    final uri = Uri(scheme: 'tel', path: _householdPhone);
+    final ok = await launchUrl(uri);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Không mở được app điện thoại. Số hộ: 0987 654 321'),
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+    }
+  }
 
   void _markAsSafe() {
-    setState(() {
-      _isSafe = true;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ Đã đánh dấu Hộ Nguyễn Văn A: An toàn!'),
-        backgroundColor: Colors.green,
+    if (_isSafe) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text('Xác nhận an toàn', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        content: Text('Đánh dấu Hộ $_householdName là AN TOÀN? Trạng thái mất liên lạc sẽ được huỷ.',
+            style: const TextStyle(fontSize: 12)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700),
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() => _isSafe = true);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('✅ Đã đánh dấu Hộ $_householdName: An toàn!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Xác nhận', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
 
   void _createSos() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🆘 Đã gửi tín hiệu cứu nạn khẩn cấp SOS thay cho hộ dân!'),
-        backgroundColor: Colors.red,
+    if (_sosCreated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã có SOS thay hộ đang xử lý.')),
+      );
+      return;
+    }
+    final noteCtrl = TextEditingController(
+        text: 'Hộ mất liên lạc > 4 giờ, admin tạo SOS thay để đội cứu hộ tiếp cận.');
+    String priority = 'red';
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: const Text('Tạo SOS thay hộ dân', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Hộ: $_householdName · Thôn Pắc Liềng',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              const Text('Mức ưu tiên:', style: TextStyle(fontSize: 11)),
+              const SizedBox(height: 4),
+              Wrap(
+                spacing: 6,
+                children: [
+                  _priorityChip(setModal, 'red', 'Đỏ (khẩn)', priority, Colors.red.shade700),
+                  _priorityChip(setModal, 'orange', 'Cam', priority, Colors.orange.shade700),
+                  _priorityChip(setModal, 'yellow', 'Vàng', priority, Colors.amber.shade700),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: noteCtrl,
+                maxLines: 2,
+                style: const TextStyle(fontSize: 12),
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Ghi chú tình huống',
+                  contentPadding: EdgeInsets.all(8),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade800),
+              onPressed: () {
+                Navigator.pop(ctx);
+                setState(() => _sosCreated = true);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('🆘 Đã tạo SOS thay hộ (${_priorityLabel(priority)}). Chờ điều phối đội.'),
+                    backgroundColor: Colors.red.shade800,
+                  ),
+                );
+              },
+              child: const Text('Tạo SOS', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  Widget _priorityChip(StateSetter setModal, String value, String label, String current, Color color) {
+    final selected = current == value;
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(fontSize: 11, color: selected ? Colors.white : color, fontWeight: FontWeight.bold)),
+      selected: selected,
+      selectedColor: color,
+      backgroundColor: color.withOpacity(0.1),
+      onSelected: (_) => setModal(() {}),
+    );
+  }
+
+  String _priorityLabel(String p) {
+    switch (p) {
+      case 'red': return 'ĐỎ';
+      case 'orange': return 'CAM';
+      case 'yellow': return 'VÀNG';
+      default: return p.toUpperCase();
+    }
+  }
+
   void _sendCheckTeam() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('🚨 Đã cử đội cứu hộ gần nhất đi kiểm tra thực địa hộ dân!'),
-        backgroundColor: Colors.blue,
+    if (_teamDispatched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đội đã được cử — theo dõi tại "Lực lượng".')),
+      );
+      return;
+    }
+    final teams = const [
+      {'name': 'Đội Dân quân Pắc Liềng', 'sub': '8 người · cách 1.4km'},
+      {'name': 'Đội Cứu hộ MTQ Bình Liêu', 'sub': '12 người · tại kho'},
+      {'name': 'Đội CA Xã', 'sub': '6 người · cách 2.1km'},
+    ];
+    int selected = 0;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModal) => Padding(
+          padding: EdgeInsets.only(
+            left: 16, right: 16, top: 16,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Chọn đội đi kiểm tra thực địa',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFC62828))),
+              const SizedBox(height: 12),
+              for (int i = 0; i < teams.length; i++)
+                RadioListTile<int>(
+                  value: i,
+                  groupValue: selected,
+                  onChanged: (v) => setModal(() => selected = v ?? 0),
+                  title: Text(teams[i]['name']!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  subtitle: Text(teams[i]['sub']!, style: const TextStyle(fontSize: 11)),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF37474F),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.engineering, color: Colors.white, size: 18),
+                label: const Text('CỬ ĐỘI ĐI KIỂM TRA',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                onPressed: () {
+                  final name = teams[selected]['name']!;
+                  Navigator.pop(ctx);
+                  setState(() => _teamDispatched = true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('🚨 Đã cử "$name" đi kiểm tra hộ $_householdName.'),
+                      backgroundColor: Colors.blue.shade800,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditForm() {
+    final nameCtrl = TextEditingController(text: _householdName);
+    final phoneCtrl = TextEditingController(text: _householdPhone);
+    final addrCtrl = TextEditingController(text: 'Thôn Pắc Liềng');
+    final memberCtrl = TextEditingController(text: '5');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: const Text('Sửa thông tin hộ dân', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameCtrl, style: const TextStyle(fontSize: 12),
+                decoration: const InputDecoration(labelText: 'Tên chủ hộ', contentPadding: EdgeInsets.all(8))),
+              const SizedBox(height: 6),
+              TextField(controller: phoneCtrl, style: const TextStyle(fontSize: 12),
+                decoration: const InputDecoration(labelText: 'Số điện thoại', contentPadding: EdgeInsets.all(8))),
+              const SizedBox(height: 6),
+              TextField(controller: addrCtrl, style: const TextStyle(fontSize: 12),
+                decoration: const InputDecoration(labelText: 'Thôn / Bản', contentPadding: EdgeInsets.all(8))),
+              const SizedBox(height: 6),
+              TextField(controller: memberCtrl, style: const TextStyle(fontSize: 12),
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Số nhân khẩu', contentPadding: EdgeInsets.all(8))),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Huỷ')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('✅ Đã lưu thay đổi hồ sơ hộ dân.'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Lưu', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -82,11 +312,7 @@ class _HouseholdDetailAdminScreenState extends State<HouseholdDetailAdminScreen>
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('✏️ Mở form chỉnh sửa thông tin hộ dân')),
-              );
-            },
+            onPressed: _showEditForm,
             child: const Text(
               'Sửa',
               style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
@@ -135,11 +361,7 @@ class _HouseholdDetailAdminScreenState extends State<HouseholdDetailAdminScreen>
                               icon: const Icon(Icons.phone_in_talk, color: Colors.red),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('📞 Đang gọi số điện thoại chủ hộ: 0987 654 321')),
-                                );
-                              },
+                              onPressed: _callHousehold,
                             ),
                           ],
                         ),
@@ -340,11 +562,7 @@ class _HouseholdDetailAdminScreenState extends State<HouseholdDetailAdminScreen>
                           ),
                           icon: const Icon(Icons.phone, size: 16),
                           label: const Text('Gọi hộ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('📞 Đang kết nối cuộc gọi đến hộ dân...')),
-                            );
-                          },
+                          onPressed: _callHousehold,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -359,9 +577,45 @@ class _HouseholdDetailAdminScreenState extends State<HouseholdDetailAdminScreen>
                           icon: const Icon(Icons.map_outlined, size: 16),
                           label: const Text('Xem trên bản đồ', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
                           onPressed: () {
-                            context.pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('🗺️ Đã hiển thị vị trí hộ dân trên bản đồ chỉ huy!')),
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                              ),
+                              builder: (ctx) => SizedBox(
+                                height: MediaQuery.of(ctx).size.height * 0.75,
+                                child: Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.location_on, color: Colors.red),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Vị trí Hộ $_householdName',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.close),
+                                            onPressed: () => Navigator.pop(ctx),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: CoreMapWidget(
+                                        center: houseLocation,
+                                        zoom: 16,
+                                        markers: markers,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             );
                           },
                         ),

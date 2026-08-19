@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 class EventLogTimelineItem {
   final String time;
@@ -102,76 +101,6 @@ class _EventLogsScreenState extends State<EventLogsScreen> with SingleTickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.blue.shade200),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.blue.shade800, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Leo thang tự nó đã là tuyên bố "xã hết khả năng" — Không còn chọn mức khẩn cấp. Huyện xếp ưu tiên dựa trên số liệu bên dưới.',
-                    style: TextStyle(color: Colors.blue.shade900, fontSize: 10.5, height: 1.4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
-          // Bảng cơ sở leo thang
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.red.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red.shade300, width: 1.5),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.bar_chart, color: Colors.red.shade800, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'CƠ SỞ LEO THANG — tự động tính lúc 09:52',
-                      style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.bold, fontSize: 11),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _buildDataRow('SOS mức đỏ chưa có đội nhận', '12', Colors.red.shade700),
-                _buildDataRow('Thời gian chờ lâu nhất', '1h 47ph', Colors.orange.shade800),
-                _buildDataRow('Hộ mất liên lạc > 4 giờ', '8', Colors.red.shade700),
-                _buildDataRow('Đội khả dụng / tổng số', '2 / 12', Colors.orange.shade800),
-                _buildDataRow('Mặt hàng dưới ngưỡng', '2', Colors.orange.shade800),
-                _buildDataRow('Điểm sơ tán còn trống', '155 chỗ', Colors.green.shade700),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    '🔒 Số liệu hệ thống sinh — admin không sửa được',
-                    style: TextStyle(color: Colors.red.shade900, fontSize: 9.5, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
           // Loại yêu cầu
           const Text(
             'LOẠI YÊU CẦU',
@@ -221,9 +150,11 @@ class _EventLogsScreenState extends State<EventLogsScreen> with SingleTickerProv
           const SizedBox(height: 8),
           TextField(
             controller: _descController,
-            maxLines: 3,
+            maxLines: 10,
+            minLines: 8,
             decoration: InputDecoration(
-              hintText: 'Mô tả tình huống chi tiết...',
+              hintText: 'Mô tả tình huống chi tiết: khu vực bị ảnh hưởng, số hộ dân, các nguồn lực đã điều động, điểm khó khăn cần huyện hỗ trợ...',
+              hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 11.5),
               filled: true,
               fillColor: Colors.white,
               border: OutlineInputBorder(
@@ -236,7 +167,7 @@ class _EventLogsScreenState extends State<EventLogsScreen> with SingleTickerProv
               ),
               contentPadding: const EdgeInsets.all(12),
             ),
-            style: const TextStyle(fontSize: 12),
+            style: const TextStyle(fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 20),
 
@@ -263,19 +194,6 @@ class _EventLogsScreenState extends State<EventLogsScreen> with SingleTickerProv
               },
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDataRow(String label, String value, Color valueColor) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.black87)),
-          Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: valueColor)),
         ],
       ),
     );

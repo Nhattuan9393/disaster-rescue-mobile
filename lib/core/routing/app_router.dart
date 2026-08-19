@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,6 +25,8 @@ import '../../features/situation/presentation/screens/cross_check_households_scr
 import '../../features/situation/presentation/screens/situation_board_screen.dart';
 
 import '../../features/rescue_team/presentation/screens/rescue_teams_management_screen.dart';
+import '../../features/rescue_team/presentation/screens/rescue_safety_confirmation_screen.dart';
+import '../../features/rescue_team/presentation/screens/rescue_team_status_screen.dart';
 import '../../features/logistics/presentation/screens/warehouse_management_screen.dart';
 import '../../features/logistics/presentation/screens/dispatch_supplies_screen.dart';
 import '../../features/logistics/presentation/screens/receive_donations_screen.dart';
@@ -33,6 +36,7 @@ import '../../features/logistics/presentation/screens/event_logs_screen.dart';
 
 import '../../features/resident/presentation/screens/bulk_import_residents_screen.dart';
 import '../../features/resident/presentation/screens/household_profile_screen.dart';
+import '../../features/resident/presentation/screens/verify_profile_updates_screen.dart';
 import '../../features/resident/presentation/screens/notifications_screen.dart';
 import '../../features/resident/presentation/screens/disaster_news_screen.dart';
 import '../../features/resident/presentation/screens/household_members_safety_screen.dart';
@@ -44,6 +48,8 @@ import '../../features/rescue_team/presentation/screens/volunteer_registration_s
 import '../../features/rescue_team/presentation/screens/permanent_forces_screen.dart';
 import '../../features/rescue_team/presentation/screens/rescue_team_detail_admin_screen.dart';
 import '../../features/resident/presentation/screens/household_detail_admin_screen.dart';
+import '../../features/sos/presentation/screens/sms_inbox_admin_screen.dart';
+import '../../features/config/presentation/screens/emergency_config_screen.dart';
 
 import '../../features/auth/presentation/screens/splash_screen.dart';
 
@@ -51,10 +57,104 @@ import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_household_screen.dart';
 import '../../features/auth/presentation/screens/role_selection_screen.dart';
+import '../../features/auth/presentation/providers/auth_controller.dart';
+import '../../features/auth/domain/user_model.dart';
+
+/// Các route công khai — không yêu cầu đăng nhập.
+const _publicRoutes = {
+  '/splash',
+  '/login',
+  '/register-household',
+  '/volunteer-register',
+  '/situation-board',
+  '/select-role',
+};
+
+String? _homeForRole(UserRole role) {
+  switch (role) {
+    case UserRole.admin:
+      return '/admin';
+    case UserRole.rescueTeam:
+      return '/rescue';
+    case UserRole.household:
+      return '/resident';
+    case UserRole.public:
+      return '/situation-board';
+  }
+}
+
+/// Route nào cấm role nào — nếu role vào nhầm khu vực khác, ép về home.
+bool _roleAllowedForPath(UserRole role, String path) {
+  if (path.startsWith('/admin') ||
+      path.startsWith('/verify-reports') ||
+      path.startsWith('/verify-profile-updates') ||
+      path.startsWith('/cross-check') ||
+      path.startsWith('/rescue-teams') ||
+      path.startsWith('/warehouse') ||
+      path.startsWith('/dispatch-supplies') ||
+      path.startsWith('/receive-donations') ||
+      path.startsWith('/donation-package-detail') ||
+      path.startsWith('/event-logs') ||
+      path.startsWith('/bulk-import') ||
+      path.startsWith('/admin-households') ||
+      path.startsWith('/escalate-district') ||
+      path.startsWith('/permanent-forces') ||
+      path.startsWith('/rescue-team-detail-admin') ||
+      path.startsWith('/household-detail-admin') ||
+      path.startsWith('/broadcast-evacuation') ||
+      path.startsWith('/sms-inbox') ||
+      path.startsWith('/emergency-config')) {
+    return role == UserRole.admin;
+  }
+  if (path.startsWith('/rescue-sos-detail') ||
+      path.startsWith('/rescue-delivery') ||
+      path.startsWith('/rescue-completion') ||
+      path.startsWith('/rescue-safety') ||
+      path.startsWith('/rescue-team-status') ||
+      path == '/rescue') {
+    return role == UserRole.rescueTeam || role == UserRole.admin;
+  }
+  if (path.startsWith('/resident') ||
+      path.startsWith('/report') ||
+      path.startsWith('/assistance') ||
+      path.startsWith('/household-profile') ||
+      path.startsWith('/news') ||
+      path.startsWith('/members-safety') ||
+      path.startsWith('/offline-sms')) {
+    return role == UserRole.household || role == UserRole.admin;
+  }
+  return true;
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/splash', // Khởi động vào màn Loading Splash Screen s01
+    initialLocation: '/splash',
+    refreshListenable: _AuthRefreshNotifier(ref),
+    redirect: (context, state) {
+      final auth = ref.read(authControllerProvider);
+      final path = state.matchedLocation;
+
+      // Đang khởi tạo — không redirect
+      if (auth.isLoading && path == '/splash') return null;
+
+      final user = auth.user;
+      final isPublic = _publicRoutes.contains(path);
+
+      if (user == null) {
+        if (isPublic) return null;
+        return '/login';
+      }
+
+      // Đã đăng nhập nhưng đang ở /login hoặc /splash → về home theo role
+      if (path == '/login' || path == '/splash') {
+        return _homeForRole(user.role);
+      }
+      // Chặn role vào sai khu vực
+      if (!_roleAllowedForPath(user.role, path)) {
+        return _homeForRole(user.role);
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/splash',
@@ -108,6 +208,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           return RescueCompletionReportScreen(sosId: sosId);
         },
       ),
+      GoRoute(
+        path: '/rescue-safety',
+        builder: (context, state) {
+          final sosId = state.uri.queryParameters['sosId'] ?? '';
+          return RescueSafetyConfirmationScreen(sosId: sosId);
+        },
+      ),
+      GoRoute(
+        path: '/rescue-team-status',
+        builder: (context, state) => const RescueTeamStatusScreen(),
+      ),
 
       GoRoute(
         path: '/report',
@@ -123,6 +234,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/verify-reports',
         builder: (context, state) => const VerifyReportsScreen(),
+      ),
+      GoRoute(
+        path: '/verify-profile-updates',
+        builder: (context, state) => const VerifyProfileUpdatesScreen(),
       ),
       GoRoute(
         path: '/report-detail',
@@ -237,6 +352,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/rescue-team-detail-admin',
         builder: (context, state) => const RescueTeamDetailAdminScreen(),
       ),
+      GoRoute(
+        path: '/sms-inbox',
+        builder: (context, state) => const SmsInboxAdminScreen(),
+      ),
+      GoRoute(
+        path: '/emergency-config',
+        builder: (context, state) => const EmergencyConfigScreen(),
+      ),
     ],
   );
 });
+
+/// Chạm vào GoRouter mỗi khi AuthState thay đổi → redirect chạy lại.
+class _AuthRefreshNotifier extends ChangeNotifier {
+  _AuthRefreshNotifier(Ref ref) {
+    ref.listen<AuthState>(authControllerProvider, (_, __) => notifyListeners());
+  }
+}

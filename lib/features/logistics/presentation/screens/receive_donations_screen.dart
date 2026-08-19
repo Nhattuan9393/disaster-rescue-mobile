@@ -1,5 +1,10 @@
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../../core/services/camera_service.dart';
 
 class ReceiveDonationsScreen extends StatefulWidget {
   const ReceiveDonationsScreen({super.key});
@@ -20,6 +25,41 @@ class _ReceiveDonationsScreenState extends State<ReceiveDonationsScreen> with Si
     {'name': 'Quần áo cũ', 'qty': '12', 'unit': 'bao', 'map': '— chưa'},
     {'name': 'Thuốc cảm', 'qty': '30', 'unit': 'hộp', 'map': '💊 Thuốc'},
   ];
+
+  final CameraService _cameraService = CameraService();
+  final List<XFile> _photos = [];
+
+  Future<void> _pickFromGallery() async {
+    final f = await _cameraService.pickFromGallery();
+    if (f == null) return;
+    if (!mounted) return;
+    setState(() => _photos.add(f));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('🖼️ Đã thêm ${_labelFor(f)} vào gói.'), backgroundColor: Colors.green),
+    );
+  }
+
+  Future<void> _takePhoto() async {
+    final f = await _cameraService.takePhoto();
+    if (f == null) return;
+    if (!mounted) return;
+    setState(() => _photos.add(f));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('📷 Đã chụp & đính kèm ${_labelFor(f)} vào gói GCT-2025-0007.'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _removePhoto(int index) {
+    setState(() => _photos.removeAt(index));
+  }
+
+  String _labelFor(XFile f) {
+    final base = f.name;
+    return base.length > 22 ? '…${base.substring(base.length - 20)}' : base;
+  }
 
   @override
   void initState() {
@@ -287,6 +327,72 @@ class _ReceiveDonationsScreenState extends State<ReceiveDonationsScreen> with Si
                       ),
                       const SizedBox(height: 14),
 
+                      // Khung ảnh xem trước
+                      Container(
+                        width: double.infinity,
+                        height: 110,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+                        ),
+                        child: _photos.isEmpty
+                            ? Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.image_outlined, size: 28, color: Colors.grey.shade400),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Chưa có ảnh — chọn hoặc chụp để đính kèm',
+                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              )
+                            : ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _photos.length,
+                                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                                itemBuilder: (ctx, i) {
+                                  final p = _photos[i];
+                                  return Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.file(
+                                          File(p.path),
+                                          width: 90,
+                                          height: 90,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            width: 90, height: 90,
+                                            color: Colors.grey.shade300,
+                                            child: const Icon(Icons.broken_image, size: 28, color: Colors.grey),
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 2,
+                                        right: 2,
+                                        child: GestureDetector(
+                                          onTap: () => _removePhoto(i),
+                                          child: Container(
+                                            padding: const EdgeInsets.all(3),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.black54,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(Icons.close, color: Colors.white, size: 12),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                      ),
+                      const SizedBox(height: 8),
+
                       // Hàng chụp ảnh
                       Row(
                         children: [
@@ -298,8 +404,11 @@ class _ReceiveDonationsScreenState extends State<ReceiveDonationsScreen> with Si
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                               ),
                               icon: const Icon(Icons.photo_library_outlined, size: 16),
-                              label: const Text('Chọn ảnh', style: TextStyle(fontSize: 11)),
-                              onPressed: () {},
+                              label: Text(
+                                _photos.isEmpty ? 'Chọn ảnh' : 'Chọn ảnh (${_photos.length})',
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                              onPressed: _pickFromGallery,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -312,7 +421,7 @@ class _ReceiveDonationsScreenState extends State<ReceiveDonationsScreen> with Si
                               ),
                               icon: const Icon(Icons.camera_alt_outlined, size: 16),
                               label: const Text('Chụp ảnh', style: TextStyle(fontSize: 11)),
-                              onPressed: () {},
+                              onPressed: _takePhoto,
                             ),
                           ),
                         ],
@@ -362,3 +471,4 @@ class _ReceiveDonationsScreenState extends State<ReceiveDonationsScreen> with Si
     );
   }
 }
+

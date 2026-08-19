@@ -35,6 +35,17 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   // Tọa độ trung tâm Bình Liêu, Quảng Ninh
   final LatLng _binhLieuCenter = const LatLng(21.5284, 107.3986);
 
+  String _shortId(String id) {
+    final clean = id.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+    if (clean.length <= 6) return clean.toUpperCase();
+    return clean.substring(clean.length - 6).toUpperCase();
+  }
+
+  String _householdLabel(String householdId) {
+    if (householdId.length <= 24) return 'Hộ: $householdId';
+    return 'Hộ ${_shortId(householdId)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final sosRequestsAsync = ref.watch(allSosRequestsStreamProvider);
@@ -257,10 +268,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             children: [
               _buildFloatingAction('Tạo SOS thay', Icons.add_alert, const Color(0xFFC62828)),
               _buildFloatingAction('Duyệt báo cáo (4)', Icons.verified_user, Colors.green.shade700, onPressed: () => context.push('/verify-reports')),
+              _buildFloatingAction('Duyệt hồ sơ', Icons.assignment_ind, Colors.indigo.shade800, onPressed: () => context.push('/verify-profile-updates')),
               _buildFloatingAction('Phát lệnh sơ tán', Icons.campaign, Colors.orange.shade800, onPressed: () => context.push('/broadcast-evacuation')),
               _buildFloatingAction('Điểm sơ tán', Icons.night_shelter, Colors.teal.shade800, onPressed: () => context.push('/evacuation-points?role=admin')),
               _buildFloatingAction('Leo thang', Icons.notification_important, Colors.red.shade900, onPressed: () => context.push('/escalate-district')),
               _buildFloatingAction('Import dân cư', Icons.upload_file, Colors.blue.shade800, onPressed: () => context.push('/bulk-import')),
+              _buildFloatingAction('Hộp thư SMS', Icons.inbox, Colors.purple.shade800, onPressed: () => context.push('/sms-inbox')),
             ],
           ),
         ),
@@ -272,7 +285,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             left: 12,
             right: 12,
             child: Container(
-              height: 110,
+              height: 150,
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -280,7 +293,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 2)),
                 ],
               ),
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
               child: sosRequestsAsync.when(
                 data: (requests) {
                   final active = requests.where((r) => r.status == SosStatus.pending || r.status == SosStatus.assigned).toList();
@@ -317,6 +330,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                               },
                               onLongPress: () => context.push('/household-detail-admin'),
                               child: Container(
+                                width: 210,
                                 margin: const EdgeInsets.only(right: 8),
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
@@ -328,18 +342,49 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      'Hộ: ${sos.householdId}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFFC62828)),
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFC62828),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            'SOS #${_shortId(sos.id)}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Điểm ${sos.priorityScore}',
+                                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFC62828)),
+                                        ),
+                                      ],
                                     ),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      'Điểm: ${sos.priorityScore}',
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                      _householdLabel(sos.householdId),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Colors.black87),
                                     ),
-                                    const SizedBox(height: 2),
+                                    const SizedBox(height: 4),
                                     GestureDetector(
                                       onTap: () => context.push('/household-detail-admin'),
-                                      child: const Text('👤 Xem hộ dân', style: TextStyle(fontSize: 10, color: Colors.blue, decoration: TextDecoration.underline)),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.person, size: 12, color: Colors.blue),
+                                          SizedBox(width: 3),
+                                          Text('Xem hộ dân', style: TextStyle(fontSize: 10, color: Colors.blue, decoration: TextDecoration.underline)),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -457,37 +502,46 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                   Text('Điểm ưu tiên: ${_selectedSos!.priorityScore} / 100'),
                   const SizedBox(height: 16),
                   
-                  // Dropdown chọn đội
-                  availableTeamsAsync.when(
-                    data: (teams) {
-                      if (teams.isEmpty) {
-                        return const Text(
-                          'Không có đội cứu hộ nào rảnh (status: available) lúc này!',
-                          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                        );
-                      }
-
-                      return DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Chọn Đội Cứu Hộ Rảnh',
-                          border: OutlineInputBorder(),
-                        ),
-                        value: _selectedTeamId,
-                        items: teams.map((team) {
-                          return DropdownMenuItem<String>(
-                            value: team.id,
-                            child: Text('${team.name}'),
+                  // Dropdown chọn đội — realtime từ Firestore. Nếu đội nào
+                  // vừa bị máy khác gán (biến mất khỏi list), user không thấy
+                  // được nữa, tránh race condition.
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final freshTeamsAsync = ref.watch(availableRescueTeamsProvider);
+                      return freshTeamsAsync.when(
+                        data: (teams) {
+                          if (teams.isEmpty) {
+                            return const Text(
+                              'Không có đội cứu hộ nào rảnh lúc này. Đóng cửa sổ này và thử lại sau khi có đội available.',
+                              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                            );
+                          }
+                          // Nếu team đã chọn không còn trong list rảnh → reset.
+                          if (_selectedTeamId != null &&
+                              !teams.any((t) => t.id == _selectedTeamId)) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) setModalState(() => _selectedTeamId = null);
+                            });
+                          }
+                          return DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                              labelText: 'Chọn Đội Cứu Hộ Rảnh',
+                              border: OutlineInputBorder(),
+                            ),
+                            initialValue: _selectedTeamId,
+                            items: teams.map((team) {
+                              return DropdownMenuItem<String>(
+                                value: team.id,
+                                child: Text(team.name),
+                              );
+                            }).toList(),
+                            onChanged: (val) => setModalState(() => _selectedTeamId = val),
                           );
-                        }).toList(),
-                        onChanged: (val) {
-                          setModalState(() {
-                            _selectedTeamId = val;
-                          });
                         },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (err, _) => Text('Lỗi: $err'),
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (err, _) => Text('Lỗi: $err'),
                   ),
                   const SizedBox(height: 20),
 
@@ -501,6 +555,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                     onPressed: _selectedTeamId == null
                         ? null
                         : () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            final rootCtx = context;
                             try {
                               final repo = ref.read(sosRepositoryProvider);
                               await repo.assignRescueTeam(
@@ -508,29 +564,38 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                                 _selectedTeamId!,
                               );
 
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Đã gán đội cứu hộ thành công!'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              }
-
+                              if (!rootCtx.mounted) return;
+                              Navigator.pop(rootCtx);
+                              messenger.clearSnackBars();
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                  content: Text('✅ Đã gán đội cứu hộ thành công!'),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
                               setState(() {
                                 _selectedSos = null;
                                 _selectedTeamId = null;
                               });
                             } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Lỗi: ${e.toString()}'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
+                              if (!rootCtx.mounted) return;
+                              // ĐÓNG MODAL trước khi hiện lỗi — không để user
+                              // tưởng đã thành công. Dropdown sẽ tự refresh
+                              // realtime khi họ mở lại.
+                              Navigator.pop(rootCtx);
+                              messenger.clearSnackBars();
+                              final msg = e.toString().replaceAll('Exception: ', '');
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text('❌ Không gán được: $msg'),
+                                  backgroundColor: Colors.red.shade700,
+                                  duration: const Duration(seconds: 4),
+                                ),
+                              );
+                              setState(() {
+                                _selectedSos = null;
+                                _selectedTeamId = null;
+                              });
                             }
                           },
                   ),
@@ -607,6 +672,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             break;
           case RescueTeamStatus.onMission:
             statusColor = Colors.orange;
+            break;
+          case RescueTeamStatus.onBreak:
+            statusColor = Colors.deepOrange;
+            break;
+          case RescueTeamStatus.endShift:
+            statusColor = Colors.black54;
             break;
           case RescueTeamStatus.offline:
             statusColor = Colors.grey;

@@ -1,8 +1,13 @@
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../../../../core/services/camera_service.dart';
+import '../../../../core/services/photo_storage_service.dart';
 import '../../../../core/widgets/map_widget.dart';
 import '../../../../core/services/gps_service.dart';
 import '../../../../core/services/connectivity_service.dart';
@@ -28,7 +33,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   LatLng? _selectedLocation;
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final List<String> _selectedPhotos = []; // Danh sách ảnh giả lập
+  final List<XFile> _selectedPhotos = [];
+  final CameraService _cameraService = CameraService();
   
   // GPS của thiết bị dùng tính toán khoảng cách
   LatLng? _userLocation;
@@ -65,22 +71,22 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     super.dispose();
   }
 
-  // Tính toán mức tin cậy tự động (chỉ cho Flow B)
-  int _calculateConfidenceScore() {
+  // Tính toán mức tin cậy tự động (chỉ cho Flow B).
+  // [hasVerifiedPhotos] phải khớp thực tế ảnh đã upload thành công lên
+  // Storage — nếu upload fail, phải truyền false để điểm không nói dối
+  // admin về ảnh chưa thực sự có.
+  int _calculateConfidenceScore({bool? hasVerifiedPhotos}) {
     int score = 0;
-    // Tự động có 15 điểm nếu có vị trí GPS
     if (_selectedLocation != null) {
       score += 15;
     }
-    // Có ảnh hiện trường + 20 điểm
-    if (_selectedPhotos.isNotEmpty) {
+    final photosCounted = hasVerifiedPhotos ?? _selectedPhotos.isNotEmpty;
+    if (photosCounted) {
       score += 20;
     }
-    // Mô tả chi tiết dài hơn 15 kí tự + 15 điểm
     if (_descriptionController.text.trim().length > 15) {
       score += 15;
     }
-    // Nhập địa chỉ rõ ràng + 10 điểm
     if (_addressController.text.trim().isNotEmpty) {
       score += 10;
     }
@@ -94,6 +100,34 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     final lat = _selectedLocation?.latitude ?? _defaultCenter.latitude;
     final lng = _selectedLocation?.longitude ?? _defaultCenter.longitude;
 
+    // Upload ảnh cho cả 2 luồng nếu có — dùng chung Firebase Storage.
+    List<String> photoUrls = const [];
+    if (_selectedPhotos.isNotEmpty) {
+      try {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('📤 Đang tải ${_selectedPhotos.length} ảnh…'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        photoUrls = await ref.read(photoStorageServiceProvider).uploadMany(
+              _selectedPhotos,
+              folder: _reportType == 'B' ? 'reports/assistance' : 'reports/situation',
+            );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('⚠️ Upload ảnh lỗi — gửi báo cáo không kèm ảnh.'),
+              backgroundColor: Colors.orange.shade800,
+            ),
+          );
+        }
+      }
+    }
+
     if (_reportType == 'B') {
       await controller.submitAssistanceRequest(
         householdId: 'household_other_${DateTime.now().millisecondsSinceEpoch}', // Nạn nhân khác
@@ -104,7 +138,11 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         description: _descriptionController.text.trim(),
         neededSupports: ['evacuation_assistance'], // Nhu cầu mặc định của Flow B
         urgencyWindow: '3h',
-        confidenceScore: _calculateConfidenceScore(),
+        // Chỉ cộng +20 điểm ảnh khi ảnh THẬT SỰ đã lên Storage.
+        confidenceScore: _calculateConfidenceScore(
+          hasVerifiedPhotos: photoUrls.isNotEmpty,
+        ),
+        photoUrls: photoUrls,
       );
     } else {
       await controller.submitSituationReport(
@@ -114,7 +152,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
         address: _addressController.text.trim(),
         incidentType: 'landslide', // Mặc định sạt lở hoặc chướng ngại vật
         description: _descriptionController.text.trim(),
-        photoUrls: _selectedPhotos,
+        photoUrls: photoUrls,
       );
     }
 
@@ -539,10 +577,36 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey.shade300),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/flood_mock.jpg'), // placeholder
-                      fit: BoxFit.cover,
-                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: Image.file(
+                          File(p.path),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.broken_image, size: 20, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.topRight,
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedPhotos.remove(p);
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                            child: const Icon(Icons.close, color: Colors.white, size: 10),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 )),
             GestureDetector(
@@ -600,92 +664,17 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
     );
   }
 
-  void _showPhotoSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+  Future<void> _showPhotoSourceDialog() async {
+    final f = await _cameraService.pickWithChoice(context);
+    if (f == null || !mounted) return;
+    setState(() => _selectedPhotos.add(f));
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('📷 Đã đính kèm ${_selectedPhotos.length} ảnh vào báo cáo.'),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
       ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: Color(0xFFD32F2F)),
-                title: const Text('Ghi hình trực tiếp (Máy ảnh)', style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _requestPermissionAndCapture('camera');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library, color: Colors.blue),
-                title: const Text('Chọn ảnh từ thư viện (Gallery)', style: TextStyle(fontWeight: FontWeight.bold)),
-                onTap: () {
-                  Navigator.pop(context);
-                  _requestPermissionAndCapture('gallery');
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _requestPermissionAndCapture(String source) {
-    final title = source == 'camera'
-        ? 'Cho phép DisasterRescue chụp ảnh và ghi video?'
-        : 'Cho phép DisasterRescue truy cập vào ảnh và phương tiện?';
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          title: Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          content: Text(
-            source == 'camera'
-                ? 'Ứng dụng cần quyền sử dụng camera để chụp ảnh thực tế tại hiện trường thiên tai.'
-                : 'Ứng dụng cần quyền truy cập album để bạn chọn ảnh đính kèm báo cáo thiên tai.',
-            style: const TextStyle(fontSize: 13, height: 1.3),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('❌ Quyền truy cập bị từ chối. Vui lòng cấp quyền trong Cài đặt.'),
-                    backgroundColor: Colors.red,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              child: const Text('TỪ CHỐI', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                setState(() {
-                  _selectedPhotos.add('photo_${_selectedPhotos.length + 1}');
-                });
-                ScaffoldMessenger.of(context).clearSnackBars();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(source == 'camera' ? '📷 Đã chụp ảnh thành công!' : '🖼️ Đã chọn ảnh thành công!'),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              },
-              child: const Text('CHO PHÉP', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
     );
   }
 }

@@ -62,12 +62,13 @@ class ReportController extends StateNotifier<ReportState> {
     required String urgencyWindow,
     required int confidenceScore,
     String? targetEvacuationPointId,
+    List<String> photoUrls = const [],
   }) async {
     state = state.copyWith(isLoading: true);
     try {
       final repo = _ref.read(reportRepositoryProvider);
       final id = const Uuid().v4();
-      
+
       final request = AssistanceRequestModel(
         id: id,
         householdId: householdId,
@@ -83,6 +84,7 @@ class ReportController extends StateNotifier<ReportState> {
         status: 'pending',
         confidenceScore: confidenceScore,
         timestamp: DateTime.now(),
+        photoUrls: photoUrls,
       );
 
       await repo.sendAssistanceRequest(request);

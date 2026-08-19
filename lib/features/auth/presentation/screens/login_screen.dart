@@ -381,17 +381,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
-          Text('🧪 Tài khoản demo (auto-provision lần đầu):',
+          Text('🧪 Tài khoản demo (auto-provision lần đầu — mật khẩu ≥ 6):',
               style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: FontWeight.bold,
                   color: Colors.brown)),
           SizedBox(height: 4),
-          Text('• admin / 123456 → Admin',
+          Text('• admin / 123456 → Admin xã',
               style: TextStyle(fontSize: 10.5, color: Colors.brown)),
-          Text('• dq01 / 123456 → Đội cứu hộ thường trực',
+          Text('• dq01 / 123456 → Đội cứu hộ thường trực (dân quân)',
               style: TextStyle(fontSize: 10.5, color: Colors.brown)),
-          Text('• vl1 / 12345 → Đội cứu hộ vãng lai',
+          Text('• vl1 / 123456 → Đội cứu hộ vãng lai (MTQ)',
               style: TextStyle(fontSize: 10.5, color: Colors.brown)),
           Text('• 0987654321 / 123456 → Hộ dân',
               style: TextStyle(fontSize: 10.5, color: Colors.brown)),

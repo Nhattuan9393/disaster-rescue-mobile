@@ -1,5 +1,10 @@
+import 'dart:io' show File;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../../core/services/camera_service.dart';
 
 class DispatchSuppliesScreen extends StatefulWidget {
   const DispatchSuppliesScreen({super.key});
@@ -18,6 +23,8 @@ class _DispatchSuppliesScreenState extends State<DispatchSuppliesScreen> {
 
   bool _isSigned = false;
   bool _hasPhoto = false;
+  XFile? _handoverPhoto;
+  final CameraService _cameraService = CameraService();
 
   void _showSignatureDialog() {
     showDialog(
@@ -58,10 +65,19 @@ class _DispatchSuppliesScreenState extends State<DispatchSuppliesScreen> {
     );
   }
 
-  void _takePhoto() {
-    setState(() => _hasPhoto = true);
+  Future<void> _takePhoto() async {
+    final f = await _cameraService.pickWithChoice(context);
+    if (f == null) return;
+    if (!mounted) return;
+    setState(() {
+      _handoverPhoto = f;
+      _hasPhoto = true;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('📷 Đã chụp ảnh bàn giao vật tư trực tiếp tại kho!')),
+      const SnackBar(
+        content: Text('📷 Đã lưu ảnh bàn giao vào phiếu PX-2025-0013'),
+        backgroundColor: Colors.green,
+      ),
     );
   }
 
@@ -241,6 +257,23 @@ class _DispatchSuppliesScreenState extends State<DispatchSuppliesScreen> {
                       ),
                     ],
                   ),
+                  if (_handoverPhoto != null) ...[
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.file(
+                        File(_handoverPhoto!.path),
+                        height: 140,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          height: 140,
+                          color: Colors.grey.shade200,
+                          child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -397,3 +430,4 @@ class _DispatchSuppliesScreenState extends State<DispatchSuppliesScreen> {
     );
   }
 }
+

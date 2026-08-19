@@ -11,6 +11,13 @@ class HouseholdModel {
   final String? headName;
   final String? contactPhone;
 
+  // Pending profile update fields for admin approval
+  final bool isUpdatePending;
+  final String? pendingAddress;
+  final int? pendingMemberCount;
+  final String? pendingHeadName;
+  final String? pendingContactPhone;
+
   const HouseholdModel({
     required this.id,
     required this.ownerUid,
@@ -23,6 +30,11 @@ class HouseholdModel {
     this.sickCount = 0,
     this.headName,
     this.contactPhone,
+    this.isUpdatePending = false,
+    this.pendingAddress,
+    this.pendingMemberCount,
+    this.pendingHeadName,
+    this.pendingContactPhone,
   });
 
   HouseholdModel copyWith({
@@ -37,6 +49,11 @@ class HouseholdModel {
     int? sickCount,
     String? headName,
     String? contactPhone,
+    bool? isUpdatePending,
+    String? pendingAddress,
+    int? pendingMemberCount,
+    String? pendingHeadName,
+    String? pendingContactPhone,
   }) {
     return HouseholdModel(
       id: id ?? this.id,
@@ -50,6 +67,11 @@ class HouseholdModel {
       sickCount: sickCount ?? this.sickCount,
       headName: headName ?? this.headName,
       contactPhone: contactPhone ?? this.contactPhone,
+      isUpdatePending: isUpdatePending ?? this.isUpdatePending,
+      pendingAddress: pendingAddress ?? this.pendingAddress,
+      pendingMemberCount: pendingMemberCount ?? this.pendingMemberCount,
+      pendingHeadName: pendingHeadName ?? this.pendingHeadName,
+      pendingContactPhone: pendingContactPhone ?? this.pendingContactPhone,
     );
   }
 
@@ -66,6 +88,11 @@ class HouseholdModel {
       'sickCount': sickCount,
       'headName': headName,
       'contactPhone': contactPhone,
+      'isUpdatePending': isUpdatePending,
+      'pendingAddress': pendingAddress,
+      'pendingMemberCount': pendingMemberCount,
+      'pendingHeadName': pendingHeadName,
+      'pendingContactPhone': pendingContactPhone,
     };
   }
 
@@ -82,6 +109,11 @@ class HouseholdModel {
       sickCount: json['sickCount'] as int? ?? 0,
       headName: json['headName'] as String?,
       contactPhone: json['contactPhone'] as String?,
+      isUpdatePending: json['isUpdatePending'] as bool? ?? false,
+      pendingAddress: json['pendingAddress'] as String?,
+      pendingMemberCount: json['pendingMemberCount'] as int?,
+      pendingHeadName: json['pendingHeadName'] as String?,
+      pendingContactPhone: json['pendingContactPhone'] as String?,
     );
   }
 }

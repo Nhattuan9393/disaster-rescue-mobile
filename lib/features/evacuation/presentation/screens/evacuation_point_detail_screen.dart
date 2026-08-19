@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/widgets/qr_scanner_screen.dart';
 import '../providers/evacuation_provider.dart';
 import '../../domain/evacuation_point_model.dart';
 
@@ -60,60 +61,64 @@ class _EvacuationPointDetailScreenState extends ConsumerState<EvacuationPointDet
     }
   }
 
-  void _showQrCheckinDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx2, setDialogState) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.qr_code_scanner, color: Colors.green.shade700),
-              const SizedBox(width: 8),
-              const Text('Quét QR — Chọn Hộ Check-in', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: _sampleHouseholds.map((hh) {
-                return ListTile(
-                  dense: true,
-                  leading: CircleAvatar(
-                    backgroundColor: hh['checkedIn'] ? Colors.green.shade100 : Colors.grey.shade200,
-                    radius: 16,
-                    child: Text(hh['checkedIn'] ? '✓' : '👤', style: const TextStyle(fontSize: 12)),
-                  ),
-                  title: Text('${hh['name']} — ${hh['village']}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  subtitle: Text('${hh['members']} người', style: const TextStyle(fontSize: 10.5)),
-                  trailing: hh['checkedIn']
-                      ? Text('Đã check-in', style: TextStyle(color: Colors.green.shade700, fontSize: 10, fontWeight: FontWeight.bold))
-                      : ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade700,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            minimumSize: Size.zero,
-                          ),
-                          onPressed: () {
-                            setDialogState(() => hh['checkedIn'] = true);
-                            setState(() => _updateCount(_currentCount + (hh['members'] as int)));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('✅ Đã check-in ${hh['name']} (${hh['members']} người)!'),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-                          },
-                          child: const Text('Check-in', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
-                        ),
-                );
-              }).toList(),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng')),
-          ],
+  Future<void> _showQrCheckinDialog() async {
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const QrScannerScreen(
+          title: 'Quét QR check-in',
+          subtitle:
+              'Đưa mã QR trên thẻ hộ / căn cước vào khung xanh để check-in vào điểm sơ tán.',
         ),
+      ),
+    );
+    if (code == null || !mounted) return;
+
+    // Parse "HH#<id>#<name>#<members>" — fallback: match theo name trong danh
+    // sách mẫu để demo trải nghiệm end-to-end mà không cần dữ liệu hộ đầy đủ.
+    final parts = code.split('#');
+    String scannedName = parts.length >= 3 ? parts[2] : code;
+    int scannedMembers = parts.length >= 4 ? int.tryParse(parts[3]) ?? 1 : 1;
+
+    final match = _sampleHouseholds.firstWhere(
+      (hh) => hh['name'].toString().toLowerCase() == scannedName.toLowerCase(),
+      orElse: () => <String, dynamic>{},
+    );
+    if (match.isEmpty) {
+      // QR không map vào hộ mẫu — thêm dòng mới.
+      setState(() {
+        _sampleHouseholds.add({
+          'name': scannedName.length > 40 ? '${scannedName.substring(0, 38)}…' : scannedName,
+          'village': '(qua QR)',
+          'members': scannedMembers,
+          'checkedIn': true,
+        });
+        _updateCount(_currentCount + scannedMembers);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Đã check-in mới qua QR: $scannedName ($scannedMembers người)'),
+          backgroundColor: Colors.green.shade700,
+        ),
+      );
+      return;
+    }
+    if (match['checkedIn'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hộ ${match['name']} đã check-in trước đó.'),
+          backgroundColor: Colors.orange.shade700,
+        ),
+      );
+      return;
+    }
+    setState(() {
+      match['checkedIn'] = true;
+      _updateCount(_currentCount + (match['members'] as int));
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('✅ Đã check-in ${match['name']} (${match['members']} người)!'),
+        backgroundColor: Colors.green,
       ),
     );
   }

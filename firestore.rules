@@ -1,47 +1,210 @@
 rules_version = '2';
 
+// Ràng buộc bảo mật đối chiếu SRS Part 6 + docs/04_DATA_SECURITY_CONTRACT.
+//
+// Nguyên tắc:
+// - Backend authorize theo `users/{uid}.role` + `sectorId/communeId`, không dựa
+//   vào UI hiding (RULE-007).
+// - Household PII chỉ mở cho admin cùng xã hoặc đội cứu hộ được gán SOS
+//   (dùng field `ownerUid` để hộ tự đọc/ghi hồ sơ nhà mình).
+// - Event log bất biến (DR-032).
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Ràng buộc bảo mật cho Hộ dân (households)
+
+    // Helper functions
+    function isAuthed() {
+      return request.auth != null;
+    }
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function myTeamId() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teamId;
+    }
+    function isAdmin() {
+      return isAuthed() && myRole() == 'admin';
+    }
+    function isRescueTeam() {
+      return isAuthed() && myRole() == 'rescueTeam';
+    }
+    function isHousehold() {
+      return isAuthed() && myRole() == 'household';
+    }
+
+    // ------- users -------
+    match /users/{uid} {
+      allow read: if isAuthed() && (request.auth.uid == uid || isAdmin());
+      allow create: if isAuthed() && request.auth.uid == uid;
+      allow update: if isAuthed() && (request.auth.uid == uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // ------- households (PII) -------
     match /households/{householdId} {
-      allow read: if request.auth != null && (
-        request.auth.uid == resource.data.ownerUid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'rescueTeam'
+      // Hộ đọc/ghi hồ sơ của chính mình; admin đọc/ghi mọi hộ; đội cứu hộ
+      // đọc được khi đang được gán cho SOS của hộ này (rule đơn giản hoá:
+      // cho phép rescueTeam đọc — MVP; nâng lên khi có Cloud Function).
+      allow read: if isAuthed() && (
+        resource.data.ownerUid == request.auth.uid ||
+        isAdmin() ||
+        isRescueTeam()
       );
-      allow write: if request.auth != null && request.auth.uid == request.resource.data.ownerUid;
+      allow create: if isAuthed() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isAuthed() && (
+        resource.data.ownerUid == request.auth.uid ||
+        isAdmin() ||
+        // Đội cứu hộ được phép cập nhật safetyStatus khi xác nhận an toàn
+        (isRescueTeam() && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['safetyStatus','safetySource','safetyConfidence','lastConfirmedAt','evacuatedPointId','updatedAt']))
+      );
+      allow delete: if isAdmin();
     }
 
-    // Ràng buộc bảo mật cho Yêu cầu cứu nạn SOS (sos_requests)
+    // ------- sos_requests -------
     match /sos_requests/{sosId} {
-      allow read: if request.auth != null; // Cho phép đọc để hiển thị bản đồ tổng hợp
-      
-      // Tạo SOS: Chỉ Hộ dân tự tạo cho chính mình
-      allow create: if request.auth != null && request.resource.data.householdId != null;
-      
-      // Cập nhật SOS: Chỉ Admin điều phối hoặc Đội cứu hộ được gán mới có quyền thay đổi trạng thái
-      allow update: if request.auth != null && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'rescueTeam' && 
-         resource.data.assignedTeamId == request.auth.uid)
+      // MVP: authenticated user đọc — để admin xem bản đồ tổng hợp và đội cứu hộ
+      // thấy SOS đã được gán cho mình. PII của hộ nằm ở households, chịu rule
+      // riêng ở trên.
+      allow read: if isAuthed();
+      // Chỉ hộ dân được tạo SOS cho chính mình; trạng thái ban đầu bắt buộc
+      // là pending — client không được tự set assigned/completed.
+      allow create: if isAuthed() && (
+        (isHousehold() && request.resource.data.householdId != null) ||
+        isAdmin()
+      ) && request.resource.data.status == 'pending'
+        && request.resource.data.assignedTeamId == null;
+      // Update: admin, hoặc đội được gán, hoặc hộ tạo (cancel).
+      allow update: if isAuthed() && (
+        isAdmin() ||
+        (isRescueTeam() && resource.data.assignedTeamId == myTeamId()) ||
+        (isHousehold() && resource.data.householdId != null
+          && request.resource.data.status == 'cancelled')
       );
+      allow delete: if isAdmin();
     }
 
-    // Ràng buộc bảo mật cho Đội Cứu Hộ (rescue_teams)
+    // ------- rescue_teams -------
     match /rescue_teams/{teamId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && (
-        request.auth.uid == teamId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      allow read: if isAuthed();
+      allow create: if isAuthed() && request.resource.data.ownerUid == request.auth.uid;
+      // Đội tự cập nhật status/heartbeat/location; admin cập nhật bất kỳ field.
+      allow update: if isAuthed() && (
+        resource.data.ownerUid == request.auth.uid ||
+        isAdmin()
       );
+      allow delete: if isAdmin();
     }
 
-    // Ràng buộc cho Nhật ký sự kiện (event_logs)
-    match /event_logs/{logId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if false; // Nhật ký bất biến
+    // ------- assistance_requests -------
+    match /assistance_requests/{id} {
+      allow read: if isAuthed();
+      allow create: if isAuthed();
+      allow update: if isAdmin() || (isAuthed() && resource.data.reporterId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ------- situation_reports (Flow B/C) -------
+    match /situation_reports/{id} {
+      allow read: if isAuthed();
+      allow create: if isAuthed();
+      allow update: if isAdmin() || (isAuthed() && resource.data.reporterId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ------- safety_confirmations -------
+    match /safety_confirmations/{id} {
+      allow read: if isAuthed();
+      // Bất kỳ authenticated user cũng tạo được (rescue/admin/household),
+      // nhưng phải kèm actor uid trong field createdBy khi ghi.
+      allow create: if isAuthed();
+      allow update, delete: if isAdmin();
+    }
+
+    // ------- evacuation_points -------
+    match /evacuation_points/{id} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+      // Cho phép authenticated ghi field currentCount + checkedInHouseholdIds
+      // trong lúc check-in (cân nhắc thu hẹp bằng Cloud Function sau).
+      allow update: if isAuthed() && request.resource.data.diff(resource.data)
+        .affectedKeys().hasOnly(['currentCount','checkedInHouseholdIds']);
+    }
+
+    // ------- evacuation_orders -------
+    match /evacuation_orders/{id} {
+      allow read: if isAuthed();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ------- event_logs (bất biến) -------
+    match /event_logs/{id} {
+      allow read: if isAuthed();
+      allow create: if isAuthed();
+      allow update, delete: if false;
+    }
+
+    // ------- sos_reports (báo cáo hoàn thành cứu hộ) -------
+    // Tạo: đội cứu hộ được gán SOS, hoặc admin. Đọc: authenticated.
+    // Không cho sửa để giữ tính bất biến của báo cáo hiện trường.
+    match /sos_reports/{id} {
+      allow read: if isAuthed();
+      allow create: if isAuthed() && (isRescueTeam() || isAdmin())
+        && request.resource.data.teamId != null
+        && request.resource.data.sosId != null;
+      allow update, delete: if isAdmin();
+    }
+
+    // ------- notifications (cross-device inbox) -------
+    match /notifications/{id} {
+      allow read: if isAuthed();
+      allow create: if isAuthed();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ------- relief_* -------
+    match /relief_items/{id} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+    }
+    match /relief_packages/{id} {
+      allow read: if isAuthed();
+      allow write: if isAdmin() || isRescueTeam();
+    }
+    match /relief_transactions/{id} {
+      allow read: if isAuthed();
+      allow create: if isAuthed();
+      allow update, delete: if isAdmin();
+    }
+    match /relief_receipts/{id} {
+      allow read: if isAuthed();
+      allow create: if isAuthed();
+      allow update, delete: if isAdmin();
+    }
+
+    // ------- sectors / obstacles / weather / disaster_events -------
+    match /sectors/{id}          { allow read: if true;      allow write: if isAdmin(); }
+    match /obstacles/{id}        { allow read: if isAuthed(); allow write: if isAuthed(); }
+    match /weather_alerts/{id}   { allow read: if true;      allow write: if isAdmin(); }
+    match /disaster_events/{id}  { allow read: if true;      allow write: if isAdmin(); }
+
+    // ------- config (emergency hotline & demo flag) -------
+    // Đọc: mọi authenticated user (app cư dân cần biết số tổng đài + demoMode).
+    // Ghi: chỉ admin — pha demo mọi admin = super admin.
+    match /config/{docId} {
+      allow read: if isAuthed();
+      allow write: if isAdmin();
+    }
+
+    // ------- sms_inbox (demo relay + gateway parsed) -------
+    // Đọc: authenticated — admin xem inbox, đội cứu hộ tham chiếu chéo.
+    // Ghi: authenticated (app cư dân ghi khi demoMode; server gateway dùng
+    // service account nên không đi qua rule này). Xoá: admin.
+    match /sms_inbox/{id} {
+      allow read: if isAuthed();
+      allow create: if isAuthed();
+      allow update, delete: if isAdmin();
     }
   }
 }

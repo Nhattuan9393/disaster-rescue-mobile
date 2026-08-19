@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import '../../../../core/widgets/map_widget.dart';
@@ -190,7 +191,7 @@ class EvacuationAlertDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 10),
 
-                // Thẻ trường học sơ tán
+                 // Thẻ trường học sơ tán
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -210,6 +211,37 @@ class EvacuationAlertDetailScreen extends ConsumerWidget {
                             const Text('Còn 155/200 chỗ · Có chăn, nước, lương khô', style: TextStyle(color: Colors.black54, fontSize: 10)),
                           ],
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.navigation, size: 12, color: Colors.white),
+                        label: const Text('Dẫn đường', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final lat = _evacLocation.latitude;
+                          final lng = _evacLocation.longitude;
+                          final googleMapsUrl = Uri.parse('google.navigation:q=$lat,$lng');
+                          final appleMapsUrl = Uri.parse('maps://?q=$lat,$lng');
+                          final webMapsUrl = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+
+                          try {
+                            if (await canLaunchUrl(googleMapsUrl)) {
+                              await launchUrl(googleMapsUrl);
+                            } else if (await canLaunchUrl(appleMapsUrl)) {
+                              await launchUrl(appleMapsUrl);
+                            } else {
+                              await launchUrl(webMapsUrl, mode: LaunchMode.externalApplication);
+                            }
+                          } catch (_) {
+                            await launchUrl(webMapsUrl, mode: LaunchMode.externalApplication);
+                          }
+                        },
                       ),
                     ],
                   ),

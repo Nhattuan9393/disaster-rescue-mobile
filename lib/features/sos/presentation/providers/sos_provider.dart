@@ -6,9 +6,12 @@ import '../../domain/sos_model.dart';
 import '../../domain/sos_status.dart';
 import '../../data/sos_sync_service.dart';
 import '../../../situation/presentation/providers/situation_provider.dart';
+import '../../../auth/presentation/providers/auth_controller.dart';
 
 /// DR-023: Theo dõi luồng SOS realtime từ Firestore
 final allSosRequestsStreamProvider = StreamProvider<List<SosRequestEntity>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return const Stream.empty();
   final repo = ref.watch(sosRepositoryProvider);
   return repo.watchSosRequests();
 });
@@ -28,6 +31,9 @@ final sosMarkersProvider = Provider<AsyncValue<List<Marker>>>((ref) {
       switch (sos.status) {
         case SosStatus.pending:
           markerColor = Colors.red; // Đang chờ cứu (Đỏ)
+          break;
+        case SosStatus.verified:
+          markerColor = Colors.pink; // Admin đã nhận tin (Hồng)
           break;
         case SosStatus.assigned:
           markerColor = Colors.orange; // Đang có đội di chuyển đến (Cam)
@@ -97,4 +103,3 @@ final recentResidentSosProvider = Provider.family<AsyncValue<SosRequestEntity?>,
     }
   });
 });
-
